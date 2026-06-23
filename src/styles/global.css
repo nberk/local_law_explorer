@@ -1,0 +1,64 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* Theme tokens mirror the legalbenchmarks design system. Light mode only. */
+@theme {
+  --color-ink-50: #f7f7f6;
+  --color-ink-100: #ececea;
+  --color-ink-200: #d8d8d4;
+  --color-ink-300: #b6b6af;
+  --color-ink-400: #8a8a82;
+  --color-ink-500: #6b6b63;
+  --color-ink-600: #535349;
+  --color-ink-700: #3d3d35;
+  --color-ink-800: #28281f;
+  --color-ink-900: #161610;
+
+  --color-accent-50: #f2f5fb;
+  --color-accent-100: #e3eaf6;
+  --color-accent-300: #9eb4dd;
+  --color-accent-500: #3d63b3;
+  --color-accent-600: #2f4d99;
+  --color-accent-700: #243c79;
+  --color-accent-900: #131f3f;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "Source Serif 4", "Source Serif Pro", ui-serif, Georgia, Cambria,
+    "Times New Roman", Times, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+    Monaco, Consolas, monospace;
+}
+
+:root {
+  --bg: #fbfbf9;
+  --fg: var(--color-ink-900);
+  --muted: var(--color-ink-500);
+  --rule: var(--color-ink-200);
+  --panel: #ffffff;
+  color-scheme: light;
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.font-display {
+  font-family: var(--font-serif);
+  letter-spacing: -0.015em;
+}
+
+a {
+  text-underline-offset: 3px;
+}
+a:hover {
+  text-decoration-color: var(--color-accent-500);
+}

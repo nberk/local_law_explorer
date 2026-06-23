@@ -1,0 +1,65 @@
+---
+import Layout from "../layouts/Layout.astro";
+import JurisdictionPicker from "../components/JurisdictionPicker.tsx";
+import { loadIndex } from "../lib/data";
+
+const { corpus, jurisdictions } = loadIndex();
+
+const stats = [
+  { label: "Ordinances", value: corpus.total_laws.toLocaleString() },
+  { label: "States", value: corpus.states.toString() },
+  { label: "Cities", value: corpus.cities.toLocaleString() },
+  { label: "Counties", value: corpus.counties.toLocaleString() },
+];
+---
+
+<Layout>
+  <section class="max-w-7xl mx-auto px-6 pt-14 pb-2">
+    <h1
+      class="font-display text-4xl md:text-5xl font-semibold text-ink-900 leading-[1.05] max-w-3xl"
+    >
+      The local rules where you live, in plain sight.
+    </h1>
+    <p class="mt-4 max-w-2xl text-[16px] leading-relaxed text-ink-600">
+      City and county ordinances govern noise, pets, fences, permits, rentals,
+      and starting a business. They are public, but scattered and hard to read.
+      This is a browsable window into them, built on the open
+      <a href="/about" class="underline hover:text-ink-900">LOCUS corpus</a>.
+    </p>
+  </section>
+
+  <section class="max-w-7xl mx-auto px-6 pt-8 pb-4">
+    <JurisdictionPicker client:load jurisdictions={jurisdictions} />
+  </section>
+
+  <section class="max-w-7xl mx-auto px-6 pt-10">
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 max-w-2xl">
+      {
+        stats.map((s) => (
+          <div class="rounded-lg border border-[var(--rule)] bg-white px-5 py-4">
+            <div class="font-mono text-2xl text-ink-900">{s.value}</div>
+            <div class="mt-1 text-[11px] uppercase tracking-wider text-ink-500">
+              {s.label}
+            </div>
+          </div>
+        ))
+      }
+    </div>
+    <p class="mt-2 text-[12px] text-ink-400 max-w-2xl">
+      Coverage of the full corpus. The pilot release above has detailed,
+      browsable pages for a sample of {jurisdictions.length} jurisdictions.
+    </p>
+  </section>
+
+  <section class="max-w-7xl mx-auto px-6 pt-6">
+    <div
+      class="rounded-lg border border-ink-100 bg-ink-50 px-5 py-4 text-[13px] text-ink-600 max-w-3xl leading-relaxed"
+    >
+      <span class="font-medium text-ink-800">This is not legal advice.</span>
+      The text is scanned (OCR) from source documents and the topic labels are
+      machine-generated estimates. There are no effective dates or amendment
+      tracking, and coverage is partial. Always confirm against your
+      jurisdiction’s official code before relying on anything here.
+    </div>
+  </section>
+</Layout>

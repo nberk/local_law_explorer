@@ -1,0 +1,19 @@
+# build output
+dist/
+.astro/
+.wrangler/
+
+# deps
+node_modules/
+
+# os / editor
+.DS_Store
+*.log
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# scratch
+scratchpad/

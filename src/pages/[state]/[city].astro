@@ -1,0 +1,91 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import LawBrowser from "../../components/LawBrowser.tsx";
+import { loadIndex } from "../../lib/data";
+import { TOPICS, TOPIC_COLOR } from "../../lib/topics";
+
+export function getStaticPaths() {
+  const { jurisdictions } = loadIndex();
+  return jurisdictions.map((j) => {
+    const [state, city] = j.id.split("/");
+    return { params: { state, city }, props: { j } };
+  });
+}
+
+const { j } = Astro.props;
+const total = j.counts.total || 1;
+const topicRows = TOPICS.map((t) => ({
+  topic: t,
+  n: j.counts[t] || 0,
+  pct: Math.round(((j.counts[t] || 0) / total) * 100),
+})).filter((r) => r.n > 0);
+---
+
+<Layout
+  title={`${j.name}, ${j.state} — Local Law Lookup`}
+  description={`Browse the local ordinances of ${j.name}, ${j.stateName}: everyday rules, business permits, and renting & property. Built on the LOCUS corpus. Not legal advice.`}
+>
+  <section class="max-w-5xl mx-auto px-6 pt-8">
+    <nav class="text-[12px] text-ink-400">
+      <a href="/" class="hover:text-ink-900">Home</a>
+      <span class="mx-1.5">/</span>
+      <span class="text-ink-500">{j.stateName}</span>
+      <span class="mx-1.5">/</span>
+      <span class="text-ink-700">{j.name}</span>
+    </nav>
+
+    <div class="mt-3 flex items-end justify-between gap-4 flex-wrap">
+      <div>
+        <h1 class="font-display text-4xl font-semibold text-ink-900 leading-tight">
+          {j.name}
+        </h1>
+        <p class="mt-1 text-[14px] text-ink-500">
+          {j.stateName} · <span class="font-mono text-ink-700"
+            >{j.counts.total.toLocaleString()}</span
+          > local laws
+        </p>
+      </div>
+    </div>
+
+    <!-- topic composition -->
+    <div class="mt-5">
+      <div class="flex h-2 w-full overflow-hidden rounded-full bg-ink-100">
+        {
+          topicRows.map((r) => (
+            <div
+              style={`width:${r.pct}%;background:${TOPIC_COLOR[r.topic]}`}
+              title={`${r.topic}: ${r.n}`}
+            />
+          ))
+        }
+      </div>
+      <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-ink-500">
+        {
+          topicRows.map((r) => (
+            <span class="inline-flex items-center gap-1.5">
+              <span
+                class="inline-block h-2 w-2 rounded-sm"
+                style={`background:${TOPIC_COLOR[r.topic]}`}
+              />
+              {r.topic}
+              <span class="font-mono text-ink-400">{r.n}</span>
+            </span>
+          ))
+        }
+      </div>
+    </div>
+
+    <!-- disclaimer banner -->
+    <div
+      class="mt-5 rounded-lg border border-ink-100 bg-ink-50 px-4 py-3 text-[12.5px] text-ink-600 leading-relaxed"
+    >
+      Scanned text with machine-generated labels, no effective dates, partial
+      coverage. <span class="font-medium text-ink-800">Not legal advice</span> —
+      verify against the official {j.name} code.
+    </div>
+  </section>
+
+  <section class="max-w-5xl mx-auto px-6 pt-8 pb-4">
+    <LawBrowser client:load jurisId={j.id} />
+  </section>
+</Layout>

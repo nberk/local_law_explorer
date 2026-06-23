@@ -1,0 +1,42 @@
+---
+const links = [
+  // "Find your town" is redundant with the logo (both → home), so hide it on
+  // mobile; keep "About the data" reachable everywhere (mobile had no nav before).
+  { href: "/", label: "Find your town", mobileHidden: true },
+  { href: "/about", label: "About the data", mobileHidden: false },
+];
+const path = Astro.url.pathname;
+---
+
+<header
+  class="border-b border-[var(--rule)] bg-[var(--bg)]/80 backdrop-blur sticky top-0 z-30"
+>
+  <div class="max-w-7xl mx-auto px-6 h-14 flex items-center gap-4">
+    <a href="/" class="flex items-center gap-2 shrink-0">
+      <span
+        class="w-6 h-6 rounded-sm bg-ink-900 text-white grid place-items-center font-display text-[13px] leading-none"
+        >L</span
+      >
+      <span class="font-display text-[15px] font-semibold text-ink-900"
+        >Local Law Lookup</span
+      >
+    </a>
+    <nav class="flex items-center gap-5 ml-2 text-[13.5px]">
+      {
+        links.map((l) => (
+          <a
+            href={l.href}
+            class={
+              (l.mobileHidden ? "hidden md:inline " : "") +
+              "transition hover:text-ink-900 " +
+              (path === l.href ? "text-ink-900 font-medium" : "text-ink-500")
+            }
+          >
+            {l.label}
+          </a>
+        ))
+      }
+    </nav>
+    <span class="flex-1"></span>
+  </div>
+</header>

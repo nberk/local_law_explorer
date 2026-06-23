@@ -1,0 +1,106 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout
+  title="About the data — Local Law Lookup"
+  description="How Local Law Lookup is built, the LOCUS-v1 corpus it uses, attribution, license, and limitations."
+>
+  <section class="max-w-3xl mx-auto px-6 pt-12 pb-4">
+    <h1 class="font-display text-4xl font-semibold text-ink-900">
+      About the data
+    </h1>
+
+    <div class="mt-6 space-y-4 text-[15px] leading-relaxed text-ink-700">
+      <p>
+        Local Law Lookup is a free, non-commercial tool for reading the city and
+        county ordinances that shape everyday life. It is built on
+        <strong class="text-ink-900">LOCUS-v1</strong>, an open corpus of U.S.
+        local law released by researchers at UC Berkeley.
+      </p>
+
+      <h2 class="font-display text-[22px] font-semibold text-ink-900 pt-2">
+        Where the text comes from
+      </h2>
+      <p>
+        The LOCUS project gathered municipal and county codes published across
+        many vendor platforms, ran optical character recognition (OCR) to turn
+        scanned and exported documents into text, then split each code into
+        individual provisions. Machine-learning classifiers labeled every
+        provision by topic and whether it states a substantive rule. We keep only
+        the substantive provisions and present them grouped by topic.
+      </p>
+
+      <h2 class="font-display text-[22px] font-semibold text-ink-900 pt-2">
+        What the labels mean
+      </h2>
+      <p>
+        Topics (Zoning, Nuisance, Buildings, Business, Other) are model
+        predictions, not official categories. The three lenses on each
+        jurisdiction page (everyday rules, starting a business, renting and
+        property) are our own keyword groupings layered on top of those topics to
+        make the text easier to navigate. The “densely worded” flag reflects an
+        opacity score from the LOCUS models. Treat all of these as helpful
+        signposts, not authoritative classifications.
+      </p>
+
+      <h2 class="font-display text-[22px] font-semibold text-ink-900 pt-2">
+        Important limitations
+      </h2>
+      <ul class="list-disc pl-5 space-y-1.5">
+        <li>This is not legal advice and is not a substitute for a lawyer.</li>
+        <li>
+          Text is OCR'd and may contain scanning errors; labels are automated and
+          unaudited.
+        </li>
+        <li>
+          There are no effective dates or amendment history. A provision shown
+          here may be outdated, amended, or repealed.
+        </li>
+        <li>
+          Coverage is partial. For each county the corpus keeps one representative
+          code, so your specific town may not appear.
+        </li>
+        <li>
+          It does not resolve which level of government (state, county, or city)
+          controls a given question.
+        </li>
+        <li>Always verify against the official municipal code.</li>
+      </ul>
+
+      <h2 class="font-display text-[22px] font-semibold text-ink-900 pt-2">
+        Attribution &amp; license
+      </h2>
+      <p>
+        The underlying data is the LOCUS-v1 corpus by Denis Peskoff, Joe Barrow,
+        Christopher Vu, and Diag Davenport (2026), used under the
+        <a
+          href="https://creativecommons.org/licenses/by-nc/4.0/"
+          class="underline hover:text-ink-900"
+          rel="noopener">Creative Commons Attribution-NonCommercial 4.0</a
+        > license. This tool is non-commercial in keeping with that license.
+      </p>
+      <div
+        class="rounded-lg border border-[var(--rule)] bg-white p-4 font-mono text-[12px] text-ink-600 overflow-x-auto"
+      >
+        <pre class="whitespace-pre-wrap">{`@article{peskoff2026freeing,
+  title   = {Freeing the Law with LOCUS: A Local Ordinance Corpus for the United States},
+  author  = {Peskoff, Denis and Barrow, Joe and Vu, Christopher and Davenport, Diag},
+  journal = {arXiv preprint arXiv:2606.19334},
+  year    = {2026}
+}`}</pre>
+      </div>
+      <p class="text-[13px] text-ink-500">
+        Dataset: <a
+          href="https://huggingface.co/datasets/LocalLaws/LOCUS-v1"
+          class="underline hover:text-ink-900"
+          rel="noopener">huggingface.co/datasets/LocalLaws/LOCUS-v1</a
+        > · Paper: <a
+          href="https://arxiv.org/abs/2606.19334"
+          class="underline hover:text-ink-900"
+          rel="noopener">arXiv:2606.19334</a
+        >
+      </p>
+    </div>
+  </section>
+</Layout>
