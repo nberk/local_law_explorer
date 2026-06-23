@@ -5,9 +5,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What this is
 
 Local Law Lookup — a free, non-commercial static site that turns the open
-**LOCUS-v1** local-ordinance corpus into plain, browsable city/county law for
-ordinary readers. Live at https://locallaw.pages.dev. Not legal advice; the text
-is OCR'd and the labels are machine-generated.
+**LOCUS-v1** local-ordinance corpus into plain, readable city/county law for
+ordinary people. Live at https://locallaw.pages.dev. Each jurisdiction page opens
+with a synthesized **Place Portrait** (how this town governs vs. the rest of the
+US), then everyday "Can I…?" questions, then notable rules, and only then a full
+searchable browse ("dig deeper"). Pilot covers **19 jurisdictions**. Not legal
+advice; the text is OCR'd and every label/score is a machine estimate.
 
 ## Commands
 
@@ -31,68 +34,88 @@ Claude preview headless browser (which hits `127.0.0.1`) can connect.
 The app is a **build pipeline** and a **static site** that never talk directly —
 they meet only at JSON files in `public/data/`.
 
-1. **Pipeline** (`pipeline/build.py`, Python + DuckDB) — queries the LOCUS-v1
-   parquet over HuggingFace's `hf://` protocol (no download needed; pass
-   `--source '/path/*.parquet'` for local files). For each pilot jurisdiction it
-   filters to `source_jurisdiction_type='cities' AND is_substantive`, cleans the
-   header into a `(title, section)` pair, tags each law with the lenses it
-   belongs to, and writes:
-   - `public/data/index.json` — manifest: corpus-wide stats + one summary per
-     jurisdiction (counts, size, medianOpacity).
-   - `public/data/<state>/<slug>.json` — the full law list for one jurisdiction.
+1. **Pipeline** (`pipeline/build.py`, Python + DuckDB) — queries LOCUS-v1 parquet
+   over HuggingFace's `hf://` protocol (no download; `--source '/path/*.parquet'`
+   for local files). Two stages:
+   - **National baselines** (`fetch_baselines`): one cheap `GROUP BY` over the
+     *whole* corpus (~2,300 jurisdictions) computing per-jurisdiction mean of the
+     four score dimensions + per-topic shares. Only the small aggregate streams
+     down (never the `content` column). Emits `public/data/baselines.json` (101
+     percentile breakpoints per dimension and per topic-share).
+   - **Per jurisdiction** (queried one at a time — equality predicates let DuckDB
+     push down to the right parquet row groups; a combined `IN` defeats pushdown):
+     filter to `is_substantive`, clean each header into `(title, section)`, tag
+     lenses, then synthesize three views — `build_portrait` (places this town's
+     means/topic-mix against the baselines → plain-language comparative sentences
+     + percentiles + `lowConfidence`/`limitedCoverage` flags), `match_questions`
+     (the "Can I…?" lens), `notable_rules` (distinctiveness heuristic). Writes
+     `public/data/<state>/<slug>.json` (portrait + questions + notable + laws) plus
+     an `index.json` manifest entry (counts, size, `portraitTeaser`).
 
-   It queries **one jurisdiction at a time** on purpose: simple equality
-   predicates let DuckDB push down to the right parquet row groups; a combined
-   `IN` on a computed key defeats pushdown and destabilizes the remote read.
+2. **Static site** (Astro 6 + React islands + Tailwind v4) — at build time
+   `src/lib/data.ts` reads the JSON (`loadIndex`, `loadJurisdiction`,
+   `loadBaselines`) and `src/pages/[state]/[city].astro` statically generates one
+   page per jurisdiction via `getStaticPaths`. In the browser, a **single**
+   `JurisdictionModules` island `fetch`es that jurisdiction's file **once** and
+   shares the parsed document across `PlacePortrait`, `CommonQuestions`,
+   `NotableRules`, and the `LawBrowser` browse tail (avoiding a 4× refetch of a
+   multi-MB file). All heavy work is at build time; the browser downloads JSON and
+   filters/renders.
 
-2. **Static site** (Astro 6 + React islands + Tailwind v4) — at build time,
-   `src/lib/data.ts` reads those JSON files from disk (`loadIndex`,
-   `loadJurisdiction`) and `src/pages/[state]/[city].astro` statically generates
-   one HTML page per jurisdiction via `getStaticPaths`. In the browser, the
-   `LawBrowser` React island `fetch`es that jurisdiction's JSON and does all
-   search/filter/sort client-side. All expensive work is at build time; the
-   browser just downloads small JSON and filters it.
+`public/data/` is **committed** (~92 MB; largest file ~15 MB) so the site builds
+and deploys without running the pipeline; CI never runs it. Re-run
+`bun run data:build` only when changing jurisdictions or the data shape — it needs
+`python3` + `duckdb` (`pip install duckdb`) and network (the baseline pass scans
+the whole corpus, ~seconds).
 
-`public/data/` is **committed to the repo** (~92 MB; largest file ~15 MB) so the
-site builds and deploys without running the Python pipeline. CI does not run the
-pipeline. Re-run `bun run data:build` only when changing jurisdictions or the
-data shape — it needs `python3` with `duckdb` (`pip install duckdb`) and network.
-
-## Domain model (shared types in `src/lib/topics.ts`)
+## Domain model (shared types + constants in `src/lib/topics.ts`)
 
 - **Topics** (`Zoning`, `Nuisance`, `Buildings`, `Business`, `Other`) are model
-  predictions from LOCUS, not official categories. `Other` is effectively the
-  classifier's junk drawer (code mechanics, penalties, ceremonial provisions),
-  and the classifier sometimes mislabels (e.g. "Municipal flag" tagged
-  `Nuisance`). Treat topics as noisy.
+  predictions, not official categories. `Other` is the classifier's junk drawer
+  (code mechanics, penalties, ceremonial provisions) and it sometimes mislabels
+  (e.g. "Municipal flag" tagged `Nuisance`). Treat topics as noisy.
 - **Lenses** (`everyday`, `business`, `renting`) are *our own* keyword groupings
-  layered on top, assigned in `pipeline/build.py:lenses_for()`. Important:
-  `everyday` contains **every** law (no filter); `business` = topic Business or a
-  business keyword; `renting` = topic Nuisance or a housing keyword. The lens
-  lexicons (`BUSINESS_KW`, `HOUSING_KW`) live in the pipeline.
+  (`lenses_for()` in the pipeline). `everyday` = **every** law; `business` = topic
+  Business or a business keyword; `renting` = topic Nuisance or a housing keyword.
 - **Scores** (`opacity`, `paternalism`, `enforcement_discretion`,
-  `problem_salience`) come straight from the LOCUS models. `opacity` drives the
-  "densely worded" badge (z ≥ `OPACITY_FLAG`). **`problem_salience` is a
-  social-problem axis (skews to crime/loitering/nuisance), NOT a relevance score
-  — do not use it to sort the default browse.**
+  `problem_salience`) come from the LOCUS models. `opacity` drives the "densely
+  worded" badge (`LawCard`, z ≥ `OPACITY_FLAG`) and the portrait's plainness line.
+  **`problem_salience` is a social-problem axis (skews to crime/loitering), NOT a
+  relevance score** — it's deliberately omitted from visible portrait copy
+  (`verifyCopy` flag) until its meaning is verified against the paper; never sort
+  the browse by it.
+- **Synthesized views** (precomputed in the pipeline, rendered client-side):
+  `portrait` (comparative percentiles + sentences, all labeled estimates),
+  `questions` (`{id, matches[]}`; `QUESTIONS_META` ids ↔ `QUESTIONS` in the
+  pipeline — surfaces "rules that mention this," never a yes/no), `notable`
+  (`{id, reason}`; `NOTABLE_REASON_LABEL` ↔ `NOTABLE_GROUPS` — matches words, not
+  meaning). These carry only law ids, resolved client-side against
+  `Jurisdiction.laws`.
 
 ## Result ordering & search (`src/components/LawBrowser.tsx`)
 
-This is where the most subtle product logic lives, because the corpus has no
-clean "resident-relevant" signal:
+The browse tail is where the subtlest logic lives, because the corpus has no clean
+"resident-relevant" signal:
 
-- **Search** ranks by where the term hits: title-prefix > title > section > body.
-  Without this, an incidental body mention outranks the on-topic law.
-- **Default (unsearched) browse** demotes administrative boilerplate to the
-  bottom via `isBoilerplate()` (topic `Other` OR an anchored ceremonial/code-
-  mechanics title regex), keeping source order otherwise. This is a **UI-side
-  stopgap**; the real fix is a build-time `rank` field. See
-  `docs/locus-tools-plan.md` §12 (UX pass) and §13 (planned pipeline ranking)
-  before touching ordering.
+- **Search** ranks by where the term hits: title-prefix > title > section > body
+  (an incidental body mention must not outrank the on-topic law).
+- **Default (unsearched) browse** sinks administrative boilerplate via
+  `isBoilerplate()` = topic `Other` OR the shared `BOILERPLATE` regex, keeping
+  source order otherwise. A **UI-side stopgap**; the real fix is a build-time
+  `rank` field (plan doc §13).
+- `BOILERPLATE` is the single source of truth in `topics.ts`, **mirrored in
+  `pipeline/build.py` as `_BOILERPLATE`** — keep them in sync. The pipeline does
+  NOT also treat `Other` as boilerplate, because many genuinely notable rules
+  (parades, curfews) are labeled `Other`.
 
-Tailwind is v4 via the `@tailwindcss/vite` plugin (no `tailwind.config`). Topic
-badge/color classes in `topics.ts` are written as **literal strings** so
-Tailwind's scanner picks them up — don't refactor them into computed class names.
+Tailwind is v4 via `@tailwindcss/vite` (no `tailwind.config`). Topic badge/color
+classes in `topics.ts` are **literal strings** so Tailwind's scanner finds them —
+don't refactor them into computed names.
+
+The homepage picker buckets jurisdictions by the `size` field (`>=1000` laws =
+"large"), which is law-count, not city size — so San Francisco shows under "Small
+towns" because its LOCUS entry is only ~580 charter/admin provisions (its portrait
+also flags `limitedCoverage` when `Other`-share ≥ 0.65).
 
 ## Deploy & CI
 
@@ -109,17 +132,24 @@ Tailwind's scanner picks them up — don't refactor them into computed class nam
 
 ## Constraints to preserve
 
-- **Licensing:** code is MIT (`LICENSE`); the data in `public/data/` is LOCUS-v1
-  under **CC BY-NC 4.0**. Keep the site non-commercial (no ads/paywall) and keep
+- **Licensing:** code is MIT (`LICENSE`); data in `public/data/` is LOCUS-v1 under
+  **CC BY-NC 4.0**. Keep the site non-commercial (no ads/paywall); keep
   attribution in the footer, `/about`, and `ATTRIBUTION.md`.
-- **Disclaimers are load-bearing.** "Not legal advice" + the OCR/machine-label
-  provenance caveats appear on every view by design. Don't quietly remove them,
-  and never present topics/lenses/scores as authoritative.
-- **v1 shows original ordinance text only** — no LLM summaries or rewrites of the
-  legal text (a deliberate product decision; see plan doc D1).
+- **Disclaimers are load-bearing.** "Not legal advice" + OCR/machine-label caveats
+  appear on every view by design. Never present topics/lenses/scores/portrait as
+  authoritative.
+- **Honesty guardrails (don't weaken):** portrait dimensions are labeled machine
+  estimates and phrased as percentiles ("plainer than 70% of towns"), never
+  verdicts; `problem_salience` stays out of visible copy until verified; questions
+  surface "rules that mention this," not yes/no answers; notable rules state they
+  match words, not meaning.
+- **Original ordinance text only** — no LLM summaries/rewrites of legal text (a
+  deliberate product decision; plan doc D1). Portrait/questions/notable are all
+  text-only heuristics — no model calls at build time.
 
 ## Deeper context
 
-`docs/locus-tools-plan.md` is the full design record: the product plan, the UX
-testing pass and the fixes made (§12), and the planned (not-yet-built)
-pipeline-level relevance ranking (§13).
+`docs/locus-tools-plan.md` is the full design record: the v2 "portrait, not a
+list" reframe (top of the doc), the original product plan, the UX testing pass
+(§12), and planned/not-yet-built upgrades — build-time relevance `rank` (§13), an
+LLM pass for Notable Rules, and verifying `problem_salience` against the paper.
