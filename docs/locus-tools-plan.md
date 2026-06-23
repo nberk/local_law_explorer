@@ -1,28 +1,65 @@
 # LOCUS Local-Law Tools: Implementation Plan
 
-Status: **v1 pilot shipped** — live at https://locallaw.pages.dev
+Status: **v2 reframe shipped locally** (v1 pilot live at https://locallaw.pages.dev)
 Last updated: 2026-06-23
 
 ## Build status
 
-Done in this pass:
-- Pipeline (`pipeline/build.py`) extracts 18 pilot jurisdictions (10 large
-  cities + 8 small towns across states) from LOCUS, cleans headers, tags lenses,
-  emits `public/data/`.
-- Astro + React + Tailwind v4 site mirroring legalbenchmarks: homepage picker,
-  per-jurisdiction pages with three lenses, within-jurisdiction search, topic
-  filter, opacity flag, best-effort "find in official code" links.
-- Attribution (footer + /about + ATTRIBUTION.md) and persistent disclaimers per
-  CC-BY-NC-4.0.
-- Deployed to Cloudflare Pages project `locallaw`.
+### v2 — "portrait, not a list" reframe (this pass)
 
-Known follow-ups (not yet done):
+The jurisdiction page no longer opens as a searchable list of laws. It opens with
+a synthesized portrait of how the place governs, then answers everyday questions,
+then surfaces distinctive rules, and only then offers the full browse as a "dig
+deeper" tail. All text-only (no LLM at build time). New work:
+
+- **Pipeline (`pipeline/build.py`):**
+  - National baseline pass — one cheap `GROUP BY` aggregation over the whole
+    corpus (avg of the 4 score dimensions + per-topic counts, ~8s, never touches
+    `content`). Emits `public/data/baselines.json` (101 percentile breakpoints per
+    dimension and per topic-share over 2,287 jurisdictions).
+  - Per-jurisdiction enrichment written into each `<state>/<slug>.json`:
+    `portrait` (plain-language comparative sentences + percentiles, plus
+    `lowConfidence` / `limitedCoverage` flags), `questions` (`{id, matches[]}`,
+    law ids only), `notable` (`{id, reason}`, law ids only). `index.json` entries
+    gain a compact `portraitTeaser`.
+  - `QUESTIONS` + `NOTABLE_GROUPS` lexicons; `match_questions` (title-hit required,
+    body text too noisy to qualify), `score_notable` (distinctiveness + boilerplate
+    /generic-header exclusion + per-category diversity cap), `build_portrait`.
+  - **San Francisco** added to the pilot (19 jurisdictions). NB: LOCUS's SF entry
+    is only ~580 charter/admin provisions (83% topic "Other"), so its questions/
+    notable come up empty and the portrait flags `limitedCoverage` (Other-share
+    ≥ 0.65; calibrated — real codes top out near 55%).
+- **Frontend:** new `PlacePortrait`, `CommonQuestions`, `NotableRules` modules,
+  rendered by a single `JurisdictionModules` island that fetches the
+  per-jurisdiction file once and shares it (incl. with `LawBrowser`, now accepting
+  a preloaded `data` prop). Extracted shared `TopicBar` + `LawCard`. Picker cards
+  show the portrait teaser. `/about` documents the comparison method.
+
+Honesty guardrails baked in: portrait dimensions are labeled machine estimates;
+`problem_salience` is omitted from visible copy until its meaning is verified
+against the paper; questions surface "rules that mention this," never a yes/no;
+notable copy states it matches words, not meaning.
+
+### v1 — pilot (prior pass)
+- Pipeline extracts pilot jurisdictions, cleans headers, tags lenses, emits
+  `public/data/`. Astro + React + Tailwind v4 site: picker, per-jurisdiction pages
+  with three lenses, within-jurisdiction search, topic filter, opacity flag,
+  best-effort "find in official code" links. Attribution + disclaimers per
+  CC-BY-NC-4.0. Deployed to Cloudflare Pages project `locallaw`.
+
+### Known follow-ups (not yet done)
+- **Verify `problem_salience`** against arXiv 2606.19334, then write non-judgmental
+  copy and un-hide it in the portrait (data + `verifyCopy` flag already present).
+- **Confirm z-score sign conventions** against the dataset README (a flipped sign
+  inverts portrait sentences).
+- **LLM upgrade for Notable Rules:** replace `score_notable`'s keyword scoring with
+  a "is this surprising to a resident?" classification (Batch API, cached by law
+  id) — no data-contract change needed.
 - **Big-city payload:** largest cities ship a multi-MB per-jurisdiction JSON
-  (Chicago ~3.3 MB gzip). Fine for the pilot; before scaling, split content into
-  a lazy-loaded chunk or a title-only search index plus on-demand content.
-- **Scale coverage:** run the pipeline over all ~1,600 covered cities (+counties)
-  — download parquet locally first; per-jurisdiction remote queries are too slow
-  at that volume. Decide manifest UX for non-built towns.
+  (Chicago ~3.3 MB gzip). The single-fetch island avoids multiplying it, but before
+  scaling, split content into a lazy chunk or a title-only index + on-demand content.
+- **Scale coverage:** run over all ~1,600 cities (+counties) — download parquet
+  locally first. Decide manifest UX for non-built towns; baselines already cover all.
 - **Custom domain:** add e.g. locallaw.nickberkconsulting.com in the CF dashboard.
 - **Plain-language summaries (D1 Option B):** scoped LLM rewrites for high-opacity
   laws, via Claude Batch API.

@@ -2,93 +2,36 @@ import { useEffect, useMemo, useState } from "react";
 import {
   LENSES,
   TOPICS,
-  TOPIC_BADGE,
-  OPACITY_FLAG,
-  sourceSearchUrl,
+  BOILERPLATE,
   type Jurisdiction,
   type Law,
   type LensId,
 } from "../lib/topics";
+import LawCard from "./LawCard";
 
 const PAGE = 60;
-const SNIPPET = 360;
 
-// Stopgap until the build pipeline drops administrative front-matter: in the
-// default (unsearched) browse, sink the city's own ceremonial provisions and
-// pure code-mechanics — they're never what a resident is looking for, and the
-// topic classifier often mislabels them (e.g. "Municipal flag" tagged Nuisance).
-// Anchored to the city's OWN insignia so we don't catch substantive license rules.
-const BOILERPLATE =
-  /(municipal flag|city flag|official flag|corporate seal|city seal|official seal|seal and emblem|coat of arms|\bpennant\b|decorations on public|honorary|commemorat|naming and renaming|municipal device|code revision|numbering of code|references? to (the )?(former|section))/i;
-
+// In the default (unsearched) browse, sink the city's own ceremonial provisions
+// and pure code-mechanics — they're never what a resident is looking for, and
+// the topic classifier often mislabels them (e.g. "Municipal flag" tagged
+// Nuisance). The shared BOILERPLATE regex lives in lib/topics.ts; here we also
+// treat topic "Other" as boilerplate to sink it in the browse ordering.
 function isBoilerplate(law: Law): boolean {
   return law.topic === "Other" || BOILERPLATE.test(law.title || "");
 }
 
-function LawCard({
-  law,
-  jurisName,
-  stateName,
+// `data` may be supplied by JurisdictionModules (which fetches the jurisdiction
+// file once for all modules). When absent, the browser self-fetches, so it still
+// works mounted on its own.
+export default function LawBrowser({
+  jurisId,
+  data: preloaded,
 }: {
-  law: Law;
-  jurisName: string;
-  stateName: string;
+  jurisId: string;
+  data?: Jurisdiction;
 }) {
-  const [open, setOpen] = useState(false);
-  const long = law.content.length > SNIPPET;
-  const text = open || !long ? law.content : law.content.slice(0, SNIPPET) + "…";
-  const opaque = law.scores.opacity !== null && law.scores.opacity >= OPACITY_FLAG;
-
-  return (
-    <div className="rounded-lg border border-[var(--rule)] bg-white p-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <span
-          className={
-            "rounded px-1.5 py-0.5 text-[10.5px] font-medium " +
-            (TOPIC_BADGE[law.topic] || TOPIC_BADGE.Other)
-          }
-        >
-          {law.topic}
-        </span>
-        {law.section && (
-          <span className="font-mono text-[11px] text-ink-400">{law.section}</span>
-        )}
-        {opaque && (
-          <span className="rounded border border-ink-100 bg-ink-50 px-1.5 py-0.5 text-[10.5px] text-ink-500">
-            densely worded
-          </span>
-        )}
-      </div>
-      <h3 className="mt-1.5 font-display text-[16px] font-semibold leading-snug text-ink-900">
-        {law.title}
-      </h3>
-      <p className="mt-1.5 whitespace-pre-line text-[14px] leading-relaxed text-ink-700">
-        {text}
-      </p>
-      <div className="mt-2.5 flex items-center gap-4 text-[12px]">
-        {long && (
-          <button
-            onClick={() => setOpen((o) => !o)}
-            className="text-ink-500 transition hover:text-ink-900"
-          >
-            {open ? "Show less" : "Show full text"}
-          </button>
-        )}
-        <a
-          href={sourceSearchUrl(jurisName, stateName, law)}
-          target="_blank"
-          rel="noopener"
-          className="text-accent-600 transition hover:text-accent-700"
-        >
-          Find in official code →
-        </a>
-      </div>
-    </div>
-  );
-}
-
-export default function LawBrowser({ jurisId }: { jurisId: string }) {
-  const [data, setData] = useState<Jurisdiction | null>(null);
+  const [fetched, setFetched] = useState<Jurisdiction | null>(null);
+  const data = preloaded ?? fetched;
   const [err, setErr] = useState(false);
   const [lens, setLens] = useState<LensId>("everyday");
   const [q, setQ] = useState("");
@@ -96,18 +39,19 @@ export default function LawBrowser({ jurisId }: { jurisId: string }) {
   const [limit, setLimit] = useState(PAGE);
 
   useEffect(() => {
+    if (preloaded) return;
     let alive = true;
     fetch(`/data/${jurisId}.json`)
       .then((r) => {
         if (!r.ok) throw new Error("not found");
         return r.json();
       })
-      .then((d) => alive && setData(d))
+      .then((d) => alive && setFetched(d))
       .catch(() => alive && setErr(true));
     return () => {
       alive = false;
     };
-  }, [jurisId]);
+  }, [jurisId, preloaded]);
 
   // reset paging when filters change
   useEffect(() => setLimit(PAGE), [lens, q, topic]);

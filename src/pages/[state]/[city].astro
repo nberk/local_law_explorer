@@ -1,6 +1,6 @@
 ---
 import Layout from "../../layouts/Layout.astro";
-import LawBrowser from "../../components/LawBrowser.tsx";
+import JurisdictionModules from "../../components/JurisdictionModules.tsx";
 import { loadIndex } from "../../lib/data";
 import { TOPICS, TOPIC_COLOR } from "../../lib/topics";
 
@@ -85,7 +85,7 @@ const topicRows = TOPICS.map((t) => ({
     </div>
   </section>
 
-  <section class="max-w-5xl mx-auto px-6 pt-8 pb-4">
-    <LawBrowser client:load jurisId={j.id} />
+  <section class="max-w-5xl mx-auto px-6 pt-4 pb-8">
+    <JurisdictionModules client:load jurisId={j.id} />
   </section>
 </Layout>

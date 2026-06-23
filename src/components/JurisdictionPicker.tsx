@@ -1,24 +1,6 @@
 import { useMemo, useState } from "react";
-import { TOPICS, TOPIC_COLOR, type JurisdictionSummary } from "../lib/topics";
-
-function TopicBar({ counts }: { counts: Record<string, number> }) {
-  const total = counts.total || 1;
-  return (
-    <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-ink-100">
-      {TOPICS.map((t) => {
-        const w = ((counts[t] || 0) / total) * 100;
-        if (w <= 0) return null;
-        return (
-          <div
-            key={t}
-            style={{ width: `${w}%`, background: TOPIC_COLOR[t] }}
-            title={`${t}: ${counts[t]}`}
-          />
-        );
-      })}
-    </div>
-  );
-}
+import { type JurisdictionSummary } from "../lib/topics";
+import TopicBar from "./TopicBar";
 
 function Card({ j }: { j: JurisdictionSummary }) {
   return (
@@ -36,6 +18,11 @@ function Card({ j }: { j: JurisdictionSummary }) {
       <div className="mt-3">
         <TopicBar counts={j.counts} />
       </div>
+      {j.portraitTeaser && (
+        <div className="mt-2 text-[12px] italic text-ink-600">
+          {j.portraitTeaser.headline}
+        </div>
+      )}
       <div className="mt-2 flex items-center justify-between text-[11.5px] text-ink-500">
         <span>
           <span className="font-mono text-ink-700">
