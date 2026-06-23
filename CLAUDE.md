@@ -98,11 +98,14 @@ Tailwind's scanner picks them up — don't refactor them into computed class nam
 
 - Hosting: Cloudflare Pages project **`locallaw`** (account "Berk Labs"),
   production branch **`main`** → `locallaw.pages.dev`.
-- `.github/workflows/deploy.yml` builds with Bun and runs
-  `wrangler pages deploy dist --project-name=locallaw --branch=main` on every
-  push to `main` (and via `workflow_dispatch`). Requires repo secrets
-  `CLOUDFLARE_API_TOKEN` (Pages:Edit) and `CLOUDFLARE_ACCOUNT_ID`.
-- Manual deploy (if needed): `bunx wrangler pages deploy dist --project-name=locallaw`.
+- **Native Cloudflare Pages Git integration** — every push to `main` triggers a
+  build + deploy; PRs get preview URLs. No GitHub Actions, no API token.
+- Build config (set in the CF dashboard, not in-repo): build command
+  `bun install && bun run build`, output dir `dist`, env var `BUN_VERSION`
+  (currently `1.3.11`). The explicit `bun install` + pinned `BUN_VERSION` are
+  **required** because Cloudflare doesn't auto-detect the text `bun.lock` (only
+  the legacy binary `bun.lockb`) and otherwise falls back to npm.
+- Deploys are Git-driven; there is no manual `wrangler pages deploy` step.
 
 ## Constraints to preserve
 

@@ -39,8 +39,17 @@ remote dataset; pass `--source '/path/*.parquet'` for local parquet files.
 
 ## Deploy (Cloudflare Pages)
 
-Static output. Build command `bun run build`, output directory `dist`. Set the
-production domain in `astro.config.mjs` (`site`).
+Hosted on Cloudflare Pages with native Git integration: every push to `main`
+builds and deploys automatically (pull requests get preview URLs). Build settings
+(configured in the Cloudflare dashboard):
+
+- Build command: `bun install && bun run build`
+- Output directory: `dist`
+- Env var: `BUN_VERSION` — required, because Cloudflare doesn't auto-detect the
+  text `bun.lock`; without the explicit `bun install` + a pinned Bun version the
+  build falls back to npm.
+
+Set the production domain in `astro.config.mjs` (`site`).
 
 ## Design
 
