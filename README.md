@@ -5,6 +5,9 @@ that shape everyday life (noise, pets, fences, permits, rentals, starting a
 business), in plain, browsable form. Built on the open
 [LOCUS-v1](https://huggingface.co/datasets/LocalLaws/LOCUS-v1) corpus.
 
+**Live:** [locallaw.pages.dev](https://locallaw.pages.dev) — pilot release with
+detailed, browsable pages for 18 jurisdictions (10 large cities, 8 small towns).
+
 > Not legal advice. Text is OCR'd and labels are machine-generated. See
 > [ATTRIBUTION.md](./ATTRIBUTION.md) and `/about`.
 
@@ -43,3 +46,11 @@ production domain in `astro.config.mjs` (`site`).
 
 Mirrors the sibling `legalbenchmarks` project: Inter / Source Serif 4 / JetBrains
 Mono, an ink + accent-blue palette, light mode only.
+
+## License
+
+- **Code:** MIT — see [LICENSE](./LICENSE).
+- **Data** (`public/data/`): the LOCUS-v1 corpus, used under
+  [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (non-commercial),
+  attributed in [ATTRIBUTION.md](./ATTRIBUTION.md), the site footer, and `/about`.
+  This site carries no ads or paywall, in keeping with that license.
