@@ -10,6 +10,7 @@
     "data:build": "python3 pipeline/build.py",
     "data:search": "python3 pipeline/build_search.py",
     "data:geo": "python3 pipeline/build_geo.py",
+    "data:geocode": "python3 pipeline/geocode_jurisdictions.py",
     "astro": "astro"
   },
   "devDependencies": {

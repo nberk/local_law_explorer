@@ -1,9 +1,6 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import RankingsTable from "../components/RankingsTable.tsx";
-import { loadIndex } from "../lib/data";
-
-const { jurisdictions } = loadIndex();
 ---
 
 <Layout
@@ -26,13 +23,13 @@ const { jurisdictions } = loadIndex();
     <div
       class="mt-4 rounded-lg border border-ink-100 bg-ink-50 px-4 py-3 text-[12.5px] text-ink-600 leading-relaxed"
     >
-      Only the {jurisdictions.length} pilot towns are listed, ranked by their national
-      percentile. Scores are machine estimates from the LOCUS models.
+      Ranked by national percentile on the chosen dimension. Scores are machine
+      estimates from the LOCUS models.
       <span class="font-medium text-ink-800">Not legal advice.</span>
     </div>
 
     <div class="mt-7">
-      <RankingsTable client:load jurisdictions={jurisdictions} />
+      <RankingsTable client:load />
     </div>
   </section>
 </Layout>

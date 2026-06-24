@@ -1,9 +1,6 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import GlobalSearch from "../components/GlobalSearch.tsx";
-import { loadIndex } from "../lib/data";
-
-const { jurisdictions } = loadIndex();
 ---
 
 <Layout
@@ -21,8 +18,8 @@ const { jurisdictions } = loadIndex();
     </h1>
     <p class="mt-3 text-[15px] leading-relaxed text-ink-600">
       Type a plain-language question and we’ll find the ordinances most related
-      to it across all {jurisdictions.length} pilot cities, ranked by meaning. We
-      surface the real law text — never a written answer, and never legal advice.
+      to it across the cities in our search index, ranked by meaning. We surface
+      the real law text — never a written answer, and never legal advice.
     </p>
   </section>
 

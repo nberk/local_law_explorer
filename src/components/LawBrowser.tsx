@@ -8,6 +8,7 @@ import {
   type Law,
   type LensId,
 } from "../lib/topics";
+import { DATA_BASE_URL } from "../lib/clientData";
 import LawCard from "./LawCard";
 
 const PAGE = 60;
@@ -44,7 +45,7 @@ export default function LawBrowser({
   useEffect(() => {
     if (preloaded) return;
     let alive = true;
-    fetch(`/data/${jurisId}.json`)
+    fetch(`${DATA_BASE_URL}/${jurisId}.json`)
       .then((r) => {
         if (!r.ok) throw new Error("not found");
         return r.json();

@@ -17,3 +17,9 @@ __pycache__/
 
 # scratch
 scratchpad/
+
+# full-rollout data (see docs/full-rollout.md): the local parquet copy and the
+# multi-GB per-jurisdiction build output. Never committed — the big files live in
+# R2; only the small index.json/baselines.json/etc. stay in public/data.
+locus-data/
+data-build/

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Jurisdiction } from "../lib/topics";
+import { DATA_BASE_URL } from "../lib/clientData";
 import PlacePortrait from "./PlacePortrait";
 import CommonQuestions from "./CommonQuestions";
 import NotableRules from "./NotableRules";
@@ -15,7 +16,7 @@ export default function JurisdictionModules({ jurisId }: { jurisId: string }) {
 
   useEffect(() => {
     let alive = true;
-    fetch(`/data/${jurisId}.json`)
+    fetch(`${DATA_BASE_URL}/${jurisId}.json`)
       .then((r) => {
         if (!r.ok) throw new Error("not found");
         return r.json();

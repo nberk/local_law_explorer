@@ -35,33 +35,29 @@ import duckdb
 
 import spectrum  # local module (pipeline/ is on sys.path when run as a script)
 
-# --- Pilot jurisdictions (state, city-slug) ---------------------------------
-# Largest covered cities, geographically spread.
-LARGE_CITIES = [
-    ("il", "chicago"),
-    ("ca", "san_diego"),
-    ("ca", "san_francisco"),
-    ("mi", "detroit"),
-    ("wa", "seattle"),
-    ("or", "portland"),
-    ("md", "baltimore"),
-    ("ga", "atlanta"),
-    ("la", "new_orleans"),
-    ("hi", "honolulu"),
-    ("tx", "houston"),
-]
-# A sample of small towns across different states.
-SMALL_TOWNS = [
-    ("ak", "utqiagvik"),
-    ("nm", "cloudcroft"),
-    ("ny", "lake_placid_village"),
-    ("pa", "state_college_borough"),
-    ("id", "grangeville"),
-    ("ia", "steamboatrock"),
-    ("mt", "terry"),
-    ("wi", "marshfield"),
-]
-PILOT = LARGE_CITIES + SMALL_TOWNS
+# --- Jurisdiction set -------------------------------------------------------
+# The full rollout builds EVERY city and county in LOCUS (see
+# docs/full-rollout.md). The set is no longer hardcoded; enumerate_jurisdictions()
+# discovers it from the corpus. The old 19-pilot list lived here.
+JURIS_TYPES = ("cities", "counties")
+
+# Curated "featured" jurisdictions that source the homepage spectrum explorers.
+# The spectrum carries HAND-AUTHORED plain-language translations (in the committed
+# spectrum.json); letting it draw from all ~2,000 jurisdictions would reselect new
+# laws and silently drop those translations. So the showcase stays sourced from
+# this fixed set (the original pilots) even at full scale. The /legalese gallery
+# has no hand-authored content, so it expands to the whole corpus.
+FEATURED = {
+    "il/chicago", "ca/san_diego", "ca/san_francisco", "mi/detroit", "wa/seattle",
+    "or/portland", "md/baltimore", "ga/atlanta", "la/new_orleans", "hi/honolulu",
+    "tx/houston", "ak/utqiagvik", "nm/cloudcroft", "ny/lake_placid_village",
+    "pa/state_college_borough", "id/grangeville", "ia/steamboatrock", "mt/terry",
+    "wi/marshfield",
+}
+
+# R2/Pages safety ceiling for a single per-jurisdiction file (the client fetches
+# one at a time, so only per-file size matters). Files over this are truncated.
+MAX_FILE_BYTES = 24 * 1024 * 1024
 
 # Corpus-wide headline stats (verified from the full dataset, for the homepage).
 CORPUS_STATS = {
@@ -242,8 +238,135 @@ def clean_header(header: str):
 
 
 def display_name(slug: str) -> str:
-    name = slug.replace("_", " ")
+    name = slug.replace("_", " ").replace("-", " ")
     return " ".join(w.capitalize() for w in name.split())
+
+
+# A governance term most county values already carry (e.g. "harris_county",
+# "assumption_parish", "denali_borough"). Substring (not word-boundary) match so
+# OCR-glued values like "leecounty"/"ashecounty" are also recognized and we don't
+# append a second "County". Louisiana = parishes, Alaska = boroughs/census areas.
+_GOV_TERMS = ("county", "parish", "borough", "census area", "municipality")
+
+
+def county_display_name(slug: str) -> str:
+    """Human county name. Appends ' County' only when the raw value carries no
+    governance term of its own."""
+    name = display_name(slug)
+    if not any(t in name.lower() for t in _GOV_TERMS):
+        name = f"{name} County"
+    return name
+
+
+def slugify(raw: str) -> str:
+    """URL/file/R2-key-safe slug from a raw stored value. Collapses any run of
+    non-alphanumerics to a single underscore so apostrophes, commas, parens, and
+    periods (e.g. \"prince_george's_county\", \"hamburg_township,_(livingston_co.)\")
+    don't leak into object keys or URLs. Idempotent on the clean pilot slugs."""
+    s = raw.lower().replace("&", " and ")
+    s = re.sub(r"[^a-z0-9]+", "_", s).strip("_")
+    return s or "x"
+
+
+def enumerate_jurisdictions(con, source, limit=None, only=None):
+    """Discover every (type, state, slug) to build. `slug` is the raw stored
+    city/county value (already underscore-cased, e.g. 'san_francisco'), kept as-is
+    so existing ids stay stable. Ordered by law count desc so a --limit slice gets
+    the largest (and a mix of both types). Returns a list of dicts."""
+    if only:
+        state, slug = only.split("/", 1)
+        # Probe both types; the per-jurisdiction query knows which column to use.
+        rows = []
+        for jtype in JURIS_TYPES:
+            col = "city" if jtype == "cities" else "county"
+            res = con.execute(
+                f"SELECT count(*) FROM '{source}' WHERE source_jurisdiction_type = ? "
+                f"AND is_substantive AND state = ? AND {col} = ?",
+                [jtype, state, slug],
+            )
+            n = res.fetchone()[0]
+            if n:
+                rows.append({"jtype": jtype, "state": state, "slug": slug, "n": n})
+        return rows
+
+    sql = f"""
+        SELECT source_jurisdiction_type AS jtype, state,
+               coalesce(city, county) AS slug, count(*) AS n
+        FROM '{source}'
+        WHERE source_jurisdiction_type IN ('cities', 'counties')
+          AND is_substantive AND coalesce(city, county) IS NOT NULL
+        GROUP BY 1, 2, 3
+        ORDER BY n DESC
+    """
+    res = con.execute(sql)
+    cols = [d[0] for d in res.description]
+    rows = [dict(zip(cols, r)) for r in res.fetchall()]
+    if limit:
+        rows = rows[:limit]
+    return rows
+
+
+def resolve_ids(jurs):
+    """Assign a unique id to every jurisdiction. A city and county in the same
+    state can share a slug; on collision the county gets a '_county'-suffixed slug
+    so ids stay unique (e.g. 'tx/houston' city vs 'tx/houston_county'). Preserves
+    'raw_slug' (the value stored in the parquet — used to query) and sets 'slug'
+    (URL/id), 'id', and 'name'. Logs collisions."""
+    for j in jurs:
+        j["raw_slug"] = j["slug"]      # the value to query the corpus by
+        j["slug"] = slugify(j["slug"])  # URL/file/R2-safe identifier
+
+    by_id = {}
+    for j in jurs:
+        j["id"] = f"{j['state']}/{j['slug']}"
+        by_id.setdefault(j["id"], []).append(j)
+
+    collisions = 0
+    for jid, group in list(by_id.items()):
+        if len(group) == 1:
+            continue
+        # Prefer keeping the city's slug; rename the county/counties first, then
+        # disambiguate any still-colliding (same-type) entries with a numeric tail.
+        group.sort(key=lambda j: 0 if j["jtype"] == "cities" else 1)
+        for k, j in enumerate(group):
+            if k == 0:
+                continue
+            if j["jtype"] == "counties" and not j["slug"].endswith("_county"):
+                j["slug"] = f"{j['slug']}_county"
+            else:
+                j["slug"] = f"{j['slug']}_{k + 1}"
+            new_id = f"{j['state']}/{j['slug']}"
+            print(f"  id collision resolved: {jid} -> {new_id}")
+            j["id"] = new_id
+            collisions += 1
+    if collisions:
+        print(f"  resolved {collisions} id collision(s)")
+
+    for j in jurs:
+        j["name"] = (county_display_name(j["raw_slug"]) if j["jtype"] == "counties"
+                     else display_name(j["raw_slug"]))
+    return jurs
+
+
+def cap_file_size(juris_doc):
+    """Ensure a per-jurisdiction doc serializes under MAX_FILE_BYTES. The body text
+    dominates size, so truncate the longest `content` fields until it fits. Returns
+    (encoded_str, was_truncated)."""
+    encoded = json.dumps(juris_doc, ensure_ascii=False)
+    if len(encoded.encode("utf-8")) <= MAX_FILE_BYTES:
+        return encoded, False
+    laws = juris_doc["laws"]
+    # Repeatedly halve the cap on the longest contents until it fits.
+    cap = 20000
+    while cap >= 1000:
+        for law in laws:
+            if law["content"] and len(law["content"]) > cap:
+                law["content"] = law["content"][:cap] + " …[truncated]"
+        encoded = json.dumps(juris_doc, ensure_ascii=False)
+        if len(encoded.encode("utf-8")) <= MAX_FILE_BYTES:
+            return encoded, True
+        cap //= 2
+    return encoded, True
 
 
 def lenses_for(topic, text):
@@ -595,16 +718,31 @@ def main():
         default="hf://datasets/LocalLaws/LOCUS-v1/data/*.parquet",
         help="Parquet glob (remote hf:// default, or a local path).",
     )
-    ap.add_argument("--out", default="public/data", help="Output directory.")
+    ap.add_argument("--out", default="public/data",
+                    help="Small shared files (index/baselines/legalese/spectrum).")
+    ap.add_argument("--juris-out", default="data-build",
+                    help="Per-jurisdiction JSON dir (gitignored; uploaded to R2).")
+    ap.add_argument("--limit", type=int, default=None,
+                    help="Process only the first N jurisdictions (largest first). Slice rehearsal.")
+    ap.add_argument("--only", default=None,
+                    help="Process a single jurisdiction, e.g. 'tx/houston'.")
     args = ap.parse_args()
 
+    # A "full run" is what regenerates the committed showcase files. A --limit /
+    # --only slice writes ONLY per-jurisdiction files (to --juris-out) so a
+    # rehearsal never clobbers the curated index/baselines/legalese/spectrum.
+    full_run = not (args.limit or args.only)
     out = Path(args.out)
-    out.mkdir(parents=True, exist_ok=True)
+    juris_out = Path(args.juris_out)
+    juris_out.mkdir(parents=True, exist_ok=True)
+    if full_run:
+        out.mkdir(parents=True, exist_ok=True)
 
     con = duckdb.connect()
     con.execute("INSTALL httpfs; LOAD httpfs;")
 
-    # National baselines first (one cheap aggregation over the whole corpus).
+    # National baselines (one cheap aggregation over the WHOLE corpus, regardless
+    # of --limit). Always needed to place a town on the national distribution.
     print("Building national baselines ...")
     baselines = fetch_baselines(con, args.source)
     print("  aggregated %d jurisdictions" % baselines["n"])
@@ -614,35 +752,40 @@ def main():
         "dimensions": {d: {"breakpoints": _breakpoints(baselines["dims"][d])} for d in SCORE_DIMS},
         "topicShares": {t: {"breakpoints": _breakpoints(baselines["shares"][t])} for t in TOPICS},
     }
-    (out / "baselines.json").write_text(json.dumps(baselines_doc, ensure_ascii=False))
-    print("  wrote %s" % (out / "baselines.json"))
+    baselines_target = (out if full_run else juris_out) / "baselines.json"
+    baselines_target.write_text(json.dumps(baselines_doc, ensure_ascii=False))
+    print("  wrote %s" % baselines_target)
 
-    # Query each jurisdiction separately: simple equality predicates let DuckDB
-    # push down to the relevant parquet row groups (a combined IN on a computed
-    # key defeats pushdown and destabilizes the remote read).
-    print("Querying LOCUS for %d pilot jurisdictions ..." % len(PILOT))
-    by_juris = {}
-    for state, city in PILOT:
-        sql = f"""
-            SELECT state, city, header, content, topic, function,
-                   enforcement_discretion, opacity, paternalism, problem_salience
-            FROM '{args.source}'
-            WHERE source_jurisdiction_type = 'cities'
-              AND is_substantive
-              AND state = ? AND city = ?
-        """
-        res = con.execute(sql, [state, city])
-        cols = [d[0] for d in res.description]
-        rows = res.fetchall()
-        by_juris[(state, city)] = [dict(zip(cols, r)) for r in rows]
-        print("  %-28s %5d rows" % (f"{state}/{city}", len(rows)))
+    # Discover the jurisdiction set (all cities + counties, unless sliced).
+    jurs = resolve_ids(enumerate_jurisdictions(con, args.source, limit=args.limit, only=args.only))
+    note = "" if full_run else "  (slice — committed showcase files untouched)"
+    print("Building %d jurisdiction(s)%s ..." % (len(jurs), note))
 
     manifest = []
     legalese_pool = []
     spectrum_pool = []
-    for (state, city), laws in sorted(by_juris.items()):
-        slug = city
-        name = display_name(city)
+    sizes = []        # (id, bytes) for the final size report
+    truncated = []    # ids whose content we had to truncate to fit the cap
+
+    # Query each jurisdiction separately: simple equality predicates let DuckDB
+    # push down to the relevant parquet row groups (a combined IN on a computed key
+    # defeats pushdown). Process + write one at a time so we never hold the whole
+    # corpus (~2.2M rows) in memory.
+    for j in jurs:
+        state, slug, jtype, jid, name = j["state"], j["slug"], j["jtype"], j["id"], j["name"]
+        col = "city" if jtype == "cities" else "county"
+        sql = f"""
+            SELECT header, content, topic, function,
+                   enforcement_discretion, opacity, paternalism, problem_salience
+            FROM '{args.source}'
+            WHERE source_jurisdiction_type = ?
+              AND is_substantive
+              AND state = ? AND {col} = ?
+        """
+        res = con.execute(sql, [jtype, state, j["raw_slug"]])
+        cols = [d[0] for d in res.description]
+        laws = [dict(zip(cols, r)) for r in res.fetchall()]
+
         counts = {t: 0 for t in TOPICS}
         out_laws = []
         for i, d in enumerate(laws):
@@ -674,75 +817,102 @@ def main():
         opacities = sorted(l["scores"]["opacity"] for l in out_laws if l["scores"]["opacity"] is not None)
         median_op = opacities[len(opacities) // 2] if opacities else None
 
-        for law in out_laws:
-            spectrum_pool.append(spectrum.flatten(state, slug, name, law))
-            op = law["scores"]["opacity"]
-            if op is None:
-                continue
+        # Legalese: contribute only this jurisdiction's most opaque laws (capped),
+        # content truncated up front so the global pool stays small at full scale.
+        for law in sorted((l for l in out_laws if l["scores"]["opacity"] is not None),
+                          key=lambda l: -l["scores"]["opacity"])[:LEGALESE_PER_JURIS]:
             legalese_pool.append({
-                "jurisId": f"{state}/{slug}",
-                "jurisName": name,
-                "state": state.upper(),
-                "slug": slug,
-                "title": law["title"],
-                "section": law["section"],
-                "topic": law["topic"],
-                "opacity": op,
-                "content": law["content"],
+                "jurisId": jid, "jurisName": name, "state": state.upper(), "slug": slug,
+                "title": law["title"], "section": law["section"], "topic": law["topic"],
+                "opacity": law["scores"]["opacity"],
+                "content": (law["content"] or "")[:LEGALESE_CONTENT_CAP],
             })
+        # Spectrum: only the curated FEATURED set feeds the homepage explorers, so
+        # their hand-authored translations survive a full rollout (see FEATURED).
+        if jid in FEATURED:
+            for law in out_laws:
+                spectrum_pool.append(spectrum.flatten(state, slug, name, law))
 
+        jtype_label = "county" if jtype == "counties" else "city"
         juris_doc = {
-            "id": f"{state}/{slug}",
+            "id": jid,
             "name": name,
             "state": state.upper(),
             "stateName": STATE_NAMES.get(state, state.upper()),
-            "type": "city",
+            "type": jtype_label,
             "portrait": portrait,
             "questions": questions,
             "notable": notable,
             "laws": out_laws,
         }
-        state_dir = out / state
+        encoded, was_trunc = cap_file_size(juris_doc)
+        state_dir = juris_out / state
         state_dir.mkdir(parents=True, exist_ok=True)
-        (state_dir / f"{slug}.json").write_text(json.dumps(juris_doc, ensure_ascii=False))
+        (state_dir / f"{slug}.json").write_text(encoded)
+        sizes.append((jid, len(encoded.encode("utf-8"))))
+        if was_trunc:
+            truncated.append(jid)
 
         manifest.append({
-            "id": f"{state}/{slug}",
+            "id": jid,
             "name": name,
             "state": state.upper(),
             "stateName": STATE_NAMES.get(state, state.upper()),
-            "type": "city",
+            "type": jtype_label,
             "counts": {"total": total, **counts},
             "medianOpacity": median_op,
             "size": "large" if total >= 1000 else "small",
             "portraitTeaser": {"headline": portrait["headline"], "lowConfidence": portrait["lowConfidence"]},
             "dimensions": summary_dimensions(portrait),
+            "lat": None,  # filled in by geocode_jurisdictions.py
+            "lon": None,
         })
         nq = sum(1 for q in questions if q["matches"])
-        print("  wrote %-28s %5d laws  | %d/%d questions, %d notable  | %s"
-              % (f"{state}/{slug}", total, nq, len(QUESTIONS), len(notable), portrait["headline"]))
+        print("  %-30s %6d laws  | %d/%d q, %d notable%s"
+              % (jid, total, nq, len(QUESTIONS), len(notable), "  [TRUNCATED]" if was_trunc else ""))
 
+    # Manifest + corpus stats. cities/counties counts come from what we built;
+    # total_laws/states/topics stay the verified headline numbers.
+    n_cities = sum(1 for m in manifest if m["type"] == "city")
+    n_counties = sum(1 for m in manifest if m["type"] == "county")
+    corpus = {**CORPUS_STATS, "cities": n_cities, "counties": n_counties}
     index = {
-        "corpus": CORPUS_STATS,
-        "jurisdictions": sorted(manifest, key=lambda j: -j["counts"]["total"]),
+        "corpus": corpus,
+        "jurisdictions": sorted(manifest, key=lambda m: -m["counts"]["total"]),
     }
-    (out / "index.json").write_text(json.dumps(index, ensure_ascii=False))
-    print("Wrote %s (%d jurisdictions)" % (out / "index.json", len(manifest)))
+    index_json = json.dumps(index, ensure_ascii=False)
+    (juris_out / "index.json").write_text(index_json)  # always, for slice inspection
+    if full_run:
+        (out / "index.json").write_text(index_json)
+    print("Wrote index.json (%d jurisdictions: %d cities, %d counties)"
+          % (len(manifest), n_cities, n_counties))
 
-    legalese = build_legalese(legalese_pool)
-    (out / "legalese.json").write_text(
-        json.dumps({"generated": "2026-06-23", "laws": legalese}, ensure_ascii=False))
-    print("Wrote %s (%d laws)" % (out / "legalese.json", len(legalese)))
+    if full_run:
+        legalese = build_legalese(legalese_pool)
+        (out / "legalese.json").write_text(
+            json.dumps({"generated": "2026-06-23", "laws": legalese}, ensure_ascii=False))
+        print("Wrote %s (%d laws)" % (out / "legalese.json", len(legalese)))
 
-    # Homepage spectra. build_spectrum reads the existing spectrum.json (if any)
-    # and carries forward hand-authored plain-language translations, so a rebuild
-    # never clobbers them (only newly-selected laws come back with plain=null).
-    spectrum_doc = spectrum.build_spectrum(spectrum_pool, str(out / "spectrum.json"))
-    spectrum_doc = {"generated": "2026-06-23", **spectrum_doc}
-    (out / "spectrum.json").write_text(json.dumps(spectrum_doc, ensure_ascii=False))
-    n_spec = sum(len(s["laws"]) for s in spectrum_doc["spectra"].values())
-    n_plain = sum(1 for s in spectrum_doc["spectra"].values() for l in s["laws"] if l["plain"])
-    print("Wrote %s (%d laws, %d translated)" % (out / "spectrum.json", n_spec, n_plain))
+        # Homepage spectra. build_spectrum reads the existing spectrum.json and
+        # carries forward hand-authored translations, so a rebuild never clobbers
+        # them (only newly-selected laws come back with plain=null).
+        spectrum_doc = spectrum.build_spectrum(spectrum_pool, str(out / "spectrum.json"))
+        spectrum_doc = {"generated": "2026-06-23", **spectrum_doc}
+        (out / "spectrum.json").write_text(json.dumps(spectrum_doc, ensure_ascii=False))
+        n_spec = sum(len(s["laws"]) for s in spectrum_doc["spectra"].values())
+        n_plain = sum(1 for s in spectrum_doc["spectra"].values() for l in s["laws"] if l["plain"])
+        print("Wrote %s (%d laws, %d translated)" % (out / "spectrum.json", n_spec, n_plain))
+
+    # Final size report (R2/Pages safety).
+    sizes.sort(key=lambda x: -x[1])
+    total_mb = sum(b for _, b in sizes) / 1024 / 1024
+    if sizes:
+        big_id, big_b = sizes[0]
+        print("Per-jurisdiction output: %d files, %.1f MB total, largest %.1f MB (%s)"
+              % (len(sizes), total_mb, big_b / 1024 / 1024, big_id))
+    if truncated:
+        print("  %d file(s) truncated to fit the %d MB cap: %s"
+              % (len(truncated), MAX_FILE_BYTES // 1024 // 1024, ", ".join(truncated[:10])))
 
 
 if __name__ == "__main__":
