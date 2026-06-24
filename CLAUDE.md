@@ -14,9 +14,18 @@ sits below them. Each jurisdiction page opens with a synthesized **Place
 Portrait** (how this town governs vs. the rest of the US), then everyday "Can
 I…?" questions, then notable rules, and only then a full searchable browse ("dig
 deeper"). Two site-level views round it out: `/rankings` (pilots on the national
-scale) and `/legalese` (a playful opacity meter). Pilot covers **19
-jurisdictions**. Not legal advice; the text is OCR'd, every label/score is a
-machine estimate, and plain-language translations are AI paraphrases, not the law.
+scale) and `/legalese` (a playful opacity meter). Not legal advice; the text is
+OCR'd, every label/score is a machine estimate, and plain-language translations
+are AI paraphrases, not the law.
+
+**Full rollout (in progress, see `docs/full-rollout.md`):** the code now supports
+rendering **every city and county in LOCUS** (~1,644 cities + ~345 counties), not
+just the original 19. The large per-jurisdiction JSON (~4.6 GB at full scale)
+lives in **Cloudflare R2**, fetched on demand from `PUBLIC_DATA_BASE_URL`; only
+the small `index.json` manifest + showcase files stay committed in `public/data/`.
+The committed data is still the 19 pilots until the one-time full build + R2
+upload is run (the "coordinate later" step). The homepage picker is search-first
+and "find my town" returns the nearest **city and county**.
 
 ## Commands
 
@@ -25,10 +34,31 @@ bun install                 # deps (always use bun, not npm/yarn)
 bun run dev                 # dev server at http://localhost:4321 (binds 0.0.0.0)
 bun run build               # static output → dist/
 bun run preview             # serve the built dist/
-bun run data:build          # regenerate public/data/ from LOCUS (see pipeline below)
+bun run data:build          # regenerate per-jurisdiction JSON (see pipeline below)
 bun run data:search         # rebuild the global semantic-search index (needs: pip install fastembed)
 bun run data:geo            # rebuild the ZIP→coords table for "Find my town" (needs: pip install certifi)
+bun run data:geocode        # write lat/lon onto each jurisdiction + ZIP→county (needs: pip install certifi)
 ```
+
+**Full-rollout build (all cities + counties — see `docs/full-rollout.md`):** read
+from a LOCAL parquet copy (streaming `hf://` is far too slow to materialize ~2,000
+jurisdictions). Download once with `huggingface_hub`
+(`LocalLaws/LOCUS-v1` → `./locus-data`, gitignored), then:
+
+```bash
+# rehearse on a slice first (writes ONLY per-jurisdiction files to data-build/;
+# committed showcase files are left untouched):
+python3 pipeline/build.py --source 'locus-data/data/*.parquet' --limit 50
+# full run (regenerates index/baselines/legalese/spectrum + all per-juris files):
+python3 pipeline/build.py --source 'locus-data/data/*.parquet'
+bun run data:geocode        # adds lat/lon to index.json + exact ZIP→county
+# then upload data-build/ to R2 (see Deploy) and commit the small files.
+```
+
+`build.py` flags: `--limit N` (first N largest, slice rehearsal), `--only state/slug`
+(single jurisdiction), `--juris-out` (per-jurisdiction dir, default gitignored
+`data-build/`). Per-jurisdiction files go to `data-build/`, NEVER `public/data/`.
+A single file is capped at ~24 MB (content truncated past that).
 
 There is no test suite, linter, or typecheck script. `bun run build` (Astro's
 build) is the closest thing to a correctness gate — it fails on type errors in
@@ -73,22 +103,32 @@ they meet only at JSON files in `public/data/`.
      never clobbers them — only newly-selected laws come back with `plain: null`.
 
 2. **Static site** (Astro 6 + React islands + Tailwind v4) — at build time
-   `src/lib/data.ts` reads the JSON (`loadIndex`, `loadJurisdiction`,
+   `src/lib/data.ts` reads `index.json`/`baselines.json`/etc. (`loadIndex`,
    `loadBaselines`, `loadLegalese`, `loadSpectrum`) and `src/pages/[state]/[city].astro`
-   statically generates one page per jurisdiction via `getStaticPaths`. In the
-   browser, a **single** `JurisdictionModules` island `fetch`es that
-   jurisdiction's file **once** and shares the parsed document across
-   `PlacePortrait`, `CommonQuestions`, `NotableRules`, and the `LawBrowser` browse
-   tail (avoiding a 4× refetch of a multi-MB file). All heavy work is at build
-   time; the browser downloads JSON and filters/renders.
+   statically generates one page per jurisdiction via `getStaticPaths`.
+   **Build-cost rule:** pages use only **summary** fields from `index.json`;
+   `loadJurisdiction()` is gone — never read a per-jurisdiction file at build time
+   (at ~2,000 places that would read the whole ~4.6 GB during `astro build`). In
+   the browser, a **single** `JurisdictionModules` island `fetch`es that
+   jurisdiction's file **once** from `` `${DATA_BASE_URL}/${id}.json` `` (R2 in
+   prod; `/data` locally — see `src/lib/clientData.ts`) and shares the parsed
+   document across `PlacePortrait`, `CommonQuestions`, `NotableRules`, and the
+   `LawBrowser` browse tail (avoiding a 4× refetch of a multi-MB file). The
+   `index.json` manifest is **client-fetched** (`loadIndexClient`, memoized), not
+   SSR-inlined, so a ~2,000-entry array never bloats every page's HTML — the
+   homepage islands (`JurisdictionPicker`, `FindMyTown`) and `RankingsTable` fetch
+   it on mount.
 
    Site-level surfaces sit on top of the per-jurisdiction pages: the **homepage**
    leads with two `SpectrumExplorer` islands over `spectrum.json` (a draggable
    tick-marked rail per dimension, plain-language ⇄ original toggle; opacity also
-   shows readability facts + a "squint" blur), then the city picker, then a
-   compact dataset explainer; `/rankings` (`RankingsTable`) places the pilots on
-   the national distribution per dimension (national-percentile framing, never a
-   leaderboard verdict); and `/legalese` (`LegaleseMeter`) is a playful gauge over
+   shows readability facts + a "squint" blur), then the **search-first**
+   `JurisdictionPicker` (a largest-first shortlist until you type, then name/state
+   filtering capped at ~60 results — it must not render ~2,000 cards) and
+   `FindMyTown`, then a compact dataset explainer; `/rankings` (`RankingsTable`)
+   places covered jurisdictions on the national distribution per dimension
+   (top-100 on the chosen axis; national-percentile framing, never a leaderboard
+   verdict); and `/legalese` (`LegaleseMeter`) is a playful gauge over
    `legalese.json`. Inside a place page, the topic mix renders as
    `TopicFingerprint` (`.astro`, server-rendered: per-topic bars vs. the national
    median share, the fix for the old confusing "more laws of X" copy), and each
@@ -101,11 +141,19 @@ they meet only at JSON files in `public/data/`.
    `src/lib/readability.ts` (deterministic facts counted from the text, not model
    output).
 
-`public/data/` is **committed** (~92 MB; largest file ~15 MB) so the site builds
-and deploys without running the pipeline; CI never runs it. Re-run
-`bun run data:build` only when changing jurisdictions or the data shape — it needs
-`python3` + `duckdb` (`pip install duckdb`) and network (the baseline pass scans
-the whole corpus, ~seconds).
+The **small** files in `public/data/` are **committed** (`index.json`,
+`baselines.json`, `legalese.json`, `spectrum.json`, `geo/`, `search/`; the 19
+pilot per-jurisdiction files remain too as an offline-dev fallback) so the site
+builds and deploys without running the pipeline; CI never runs it. The **large**
+per-jurisdiction files are NOT committed — at full scale they live in R2 and are
+written to gitignored `data-build/` by the pipeline. Re-run `bun run data:build`
+only when changing jurisdictions or the data shape — it needs `python3` + `duckdb`
+(`pip install duckdb`) and, for the full set, a local parquet copy (see Commands).
+
+**Local dev after the rollout:** per-jurisdiction files for non-pilot places are
+not committed, so either set `PUBLIC_DATA_BASE_URL` to the R2 URL in `.env`, or
+copy a `data-build/` slice into `public/data/`. The default `PUBLIC_DATA_BASE_URL`
+is `/data`, which serves the committed pilots offline.
 
 ### Global semantic search ("Ask the law", `/search`)
 
@@ -132,12 +180,17 @@ full design and the locked decisions.
 
 `FindMyTown.tsx` learns the user's rough location three ways (zero-click IP geo via
 `functions/api/where.ts` → precise browser Geolocation on click → manual ZIP/city)
-and shows the **nearest pilot with the honest distance + a "we don't cover your
-town yet" caveat** when it's far. Nearest-of-19 math + the hand-maintained coord
-table live in `src/lib/geo.ts` (LOCUS has no coordinates — a deliberate exception
-to "data comes from the pipeline"). ZIP→coords uses `public/data/geo/zip-centroids.json`
-(built by `pipeline/build_geo.py` from GeoNames), lazy-loaded only on ZIP entry.
-Precise coords never leave the browser.
+and shows **two cards — the nearest city and the nearest county** (both layers of
+local law apply to one spot), each with its own honest distance + a "we don't cover
+your town yet" caveat when far. `nearestByType()` in `src/lib/geo.ts` computes
+nearest-of-each over the `lat`/`lon` on every `JurisdictionSummary` (skipping
+null-coord entries). Coordinates are no longer hardcoded: `pipeline/geocode_jurisdictions.py`
+fills them in (cities → GeoNames populated places; counties → US Census Gazetteer
+internal points) — LOCUS has no coordinates, a deliberate exception to "data comes
+from the pipeline". ZIP→coords uses `public/data/geo/zip-centroids.json` (built by
+`pipeline/build_geo.py` from GeoNames), entries now `[lat, lon, countyId?]` so a
+ZIP returns the **exact** containing county (added by `data:geocode`); device/IP
+geo still use nearest-centroid. Precise coords never leave the browser.
 
 ## Domain model (shared types + constants in `src/lib/topics.ts`)
 
@@ -184,10 +237,11 @@ Tailwind is v4 via `@tailwindcss/vite` (no `tailwind.config`). Topic badge/color
 classes in `topics.ts` are **literal strings** so Tailwind's scanner finds them —
 don't refactor them into computed names.
 
-The homepage picker buckets jurisdictions by the `size` field (`>=1000` laws =
-"large"), which is law-count, not city size — so San Francisco shows under "Small
-towns" because its LOCUS entry is only ~580 charter/admin provisions (its portrait
-also flags `limitedCoverage` when `Other`-share ≥ 0.65).
+The `size` field (`>=1000` laws = "large") is **law-count, not city size** — so
+San Francisco is "small" because its LOCUS entry is only ~580 charter/admin
+provisions (its portrait also flags `limitedCoverage` when `Other`-share ≥ 0.65).
+The search-first picker no longer buckets on `size`; it orders by law count
+(`index.json` is sorted that way) for the largest-first shortlist.
 
 ## Deploy & CI
 
@@ -201,6 +255,17 @@ also flags `limitedCoverage` when `Other`-share ≥ 0.65).
   **required** because Cloudflare doesn't auto-detect the text `bun.lock` (only
   the legacy binary `bun.lockb`) and otherwise falls back to npm.
 - Deploys are Git-driven; there is no manual `wrangler pages deploy` step.
+- **R2 (full rollout)** — large per-jurisdiction JSON lives in a public R2 bucket
+  (planned name `locallaw-data`, prefix `data/`), set on the Pages project as the
+  build env var **`PUBLIC_DATA_BASE_URL`** (the bucket's public `r2.dev`/custom
+  URL). Bucket created via `wrangler r2 bucket create`; **CORS** must allow `GET`
+  from the Pages origin + `http://localhost:4321`. Bulk upload with
+  `aws s3 sync data-build/ s3://locallaw-data/data/ --endpoint-url
+  https://<account>.r2.cloudflarestorage.com` (wrangler has no bulk sync). The R2
+  S3 token is an **operator secret** — keep it in the macOS Keychain
+  (`security find-generic-password -s r2-locallaw -w`), never the repo/`.env`. Free
+  tier: 10 GB storage (≈4.6 GB used), egress free, Class-B reads 10M/mo. *(Bucket
+  + env var are provisioned during the one-time rollout — see `docs/full-rollout.md`.)*
 - **Pages Functions** live in `functions/` (repo root) and deploy automatically
   alongside the static `dist/` — no build-config change. `functions/api/search.ts`
   needs a **Workers AI binding named `AI`** on the Pages project (dashboard →
@@ -244,3 +309,6 @@ LLM pass for Notable Rules, and verifying `problem_salience` against the paper.
 `docs/homepage-redesign.md` records the 2026-06-23 pass: the spectrum-explorer
 homepage, the D1 plain-language reversal, and the `TopicFingerprint` /
 `NationalPositionBar` data-viz upgrades.
+`docs/full-rollout.md` records the 2026-06-24 scale-up to all cities + counties:
+the R2 data store, the `data-build/` split, client-fetched `index.json`, the
+geocoding step, the search-first picker, and the nearest-city-and-county geo.

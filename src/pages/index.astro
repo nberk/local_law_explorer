@@ -5,8 +5,9 @@ import FindMyTown from "../components/FindMyTown.tsx";
 import SpectrumExplorer from "../components/SpectrumExplorer.tsx";
 import { loadIndex, loadSpectrum } from "../lib/data";
 
-const { corpus, jurisdictions } = loadIndex();
+const { corpus } = loadIndex();
 const { spectra } = loadSpectrum();
+const coveredCount = corpus.cities + corpus.counties;
 
 const stats = [
   { label: "Ordinances", value: corpus.total_laws.toLocaleString() },
@@ -106,10 +107,10 @@ const stats = [
       to browse.
     </p>
     <div class="mt-6">
-      <FindMyTown client:load jurisdictions={jurisdictions} />
+      <FindMyTown client:load />
     </div>
     <div class="mt-10">
-      <JurisdictionPicker client:load jurisdictions={jurisdictions} />
+      <JurisdictionPicker client:load />
     </div>
   </section>
 
@@ -129,9 +130,8 @@ const stats = [
         States. There is no central index. Every town’s code lives on a
         different site or in a PDF, in its own format. The open LOCUS corpus
         gathered these codes, read them with OCR, and labeled every provision
-        into one uniform table. This pilot renders detailed pages for {
-          jurisdictions.length
-        } of them.
+        into one uniform table. This site renders a detailed page for every one
+        of the {coveredCount.toLocaleString()} cities and counties in it.
       </p>
     </div>
 

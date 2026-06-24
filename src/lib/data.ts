@@ -1,7 +1,7 @@
 // Build-time data access. Reads the JSON the pipeline emitted into public/data.
 import fs from "node:fs";
 import path from "node:path";
-import type { Jurisdiction, JurisdictionSummary } from "./topics";
+import type { JurisdictionSummary } from "./topics";
 
 const DATA_DIR = path.join(process.cwd(), "public", "data");
 
@@ -22,10 +22,10 @@ export function loadIndex(): IndexFile {
   return JSON.parse(fs.readFileSync(path.join(DATA_DIR, "index.json"), "utf-8"));
 }
 
-export function loadJurisdiction(state: string, slug: string): Jurisdiction {
-  const file = path.join(DATA_DIR, state.toLowerCase(), `${slug}.json`);
-  return JSON.parse(fs.readFileSync(file, "utf-8"));
-}
+// NOTE: there is intentionally no build-time loadJurisdiction(). At full scale
+// reading per-jurisdiction files during `astro build` would pull ~4.6 GB. The
+// heavy `laws[]` is always fetched client-side from PUBLIC_DATA_BASE_URL (R2);
+// pages use only the summary fields from index.json. See docs/full-rollout.md.
 
 // National percentile breakpoints, used to place an arbitrary town on the
 // national distribution. Portrait percentiles for the pilot towns are already

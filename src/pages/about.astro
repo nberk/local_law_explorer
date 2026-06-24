@@ -2,7 +2,7 @@
 import Layout from "../layouts/Layout.astro";
 import { loadIndex } from "../lib/data";
 
-const { corpus, jurisdictions } = loadIndex();
+const { corpus } = loadIndex();
 ---
 
 <Layout
@@ -33,7 +33,7 @@ const { corpus, jurisdictions } = loadIndex();
         > cities and <strong class="text-ink-900">{corpus.counties}</strong>
         counties across all <strong class="text-ink-900">{corpus.states}</strong>
         states, each labeled by topic and scored on several model dimensions.
-        This pilot renders detailed pages for {jurisdictions.length} of them.
+        This site renders a detailed page for every one of them.
       </p>
 
       <h2 class="font-display text-[22px] font-semibold text-ink-900 pt-2">

@@ -173,6 +173,11 @@ export interface JurisdictionSummary {
   // National percentile per visible dimension, for the city-ranking page.
   // Mirrors portrait.dimensions[].percentile; problem_salience omitted.
   dimensions?: Partial<Record<DimensionKey, { percentile: number; displayPercentile?: number }>>;
+  // Approximate jurisdiction center, filled in by pipeline/geocode_jurisdictions.py
+  // (cities: GeoNames populated place; counties: Census Gazetteer internal point).
+  // null when no confident geocode match — such places are skipped by "find my town".
+  lat: number | null;
+  lon: number | null;
 }
 
 // Display metadata for the common-questions lens. Keep ids in sync with the

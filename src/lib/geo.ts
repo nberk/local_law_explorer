@@ -1,39 +1,16 @@
-// Nearest-pilot geolocation helpers.
+// Nearest-jurisdiction geolocation helpers.
 //
-// LOCUS has no coordinates, so the 19 pilot locations are hand-maintained here
-// (approximate city centers). This is a deliberate exception to the "all data
-// comes from the pipeline" rule — see docs/global-semantic-search.md (Feature 2).
-//
-// Everything in this file is pure and runs in the browser: a user's precise
-// coordinates (from the Geolocation API) never leave the device — we only
-// compare them against these 19 fixed points.
+// Coordinates now live on each JurisdictionSummary (`lat`/`lon`), filled in by
+// pipeline/geocode_jurisdictions.py. This file is pure and runs in the browser: a
+// user's precise coordinates (from the Geolocation API) never leave the device —
+// we only compare them against the jurisdiction coordinate table.
+import type { JurisdictionSummary } from "./topics";
 
 export type LatLon = { lat: number; lon: number };
 
-// Keyed by jurisdiction id (matches index.json / the `/${id}` route).
-export const JURISDICTION_COORDS: Record<string, [number, number]> = {
-  "il/chicago": [41.8781, -87.6298],
-  "ca/san_diego": [32.7157, -117.1611],
-  "ca/san_francisco": [37.7749, -122.4194],
-  "mi/detroit": [42.3314, -83.0458],
-  "wa/seattle": [47.6062, -122.3321],
-  "or/portland": [45.5152, -122.6784],
-  "md/baltimore": [39.2904, -76.6122],
-  "ga/atlanta": [33.749, -84.388],
-  "la/new_orleans": [29.9511, -90.0715],
-  "hi/honolulu": [21.3069, -157.8583],
-  "tx/houston": [29.7604, -95.3698],
-  "ak/utqiagvik": [71.2906, -156.7886],
-  "nm/cloudcroft": [32.9553, -105.7414],
-  "ny/lake_placid_village": [44.2795, -73.9799],
-  "pa/state_college_borough": [40.7934, -77.86],
-  "id/grangeville": [45.9265, -116.1224],
-  "ia/steamboatrock": [42.403, -93.064],
-  "mt/terry": [46.7919, -105.3108],
-  "wi/marshfield": [44.6688, -90.1718],
-};
-
-// Beyond this, we tell the user plainly that we don't cover their town yet.
+// Beyond this, we tell the user plainly that we don't cover their town yet. With
+// full coverage this rarely fires, but a remote ZIP can still be far from any
+// covered place.
 export const COVERAGE_RADIUS_MILES = 50;
 
 const EARTH_RADIUS_MILES = 3958.8;
@@ -57,18 +34,40 @@ export type NearestResult = {
   withinCoverage: boolean; // distance <= COVERAGE_RADIUS_MILES
 };
 
-/** Find the nearest pilot jurisdiction to a coordinate. */
-export function nearestPilot(lat: number, lon: number): NearestResult {
-  const here: LatLon = { lat, lon };
+/** Nearest jurisdiction of a given type to a coordinate, or null if none in that
+ * type has coordinates. Entries with null coords are skipped. */
+function nearestOfType(
+  here: LatLon,
+  jurisdictions: JurisdictionSummary[],
+  type: "city" | "county",
+): NearestResult | null {
   let best: NearestResult | null = null;
-  for (const [id, [jlat, jlon]] of Object.entries(JURISDICTION_COORDS)) {
-    const d = haversineMiles(here, { lat: jlat, lon: jlon });
+  for (const j of jurisdictions) {
+    if (j.type !== type || j.lat == null || j.lon == null) continue;
+    const d = haversineMiles(here, { lat: j.lat, lon: j.lon });
     if (!best || d < best.distanceMiles) {
-      best = { id, distanceMiles: d, withinCoverage: d <= COVERAGE_RADIUS_MILES };
+      best = {
+        id: j.id,
+        distanceMiles: d,
+        withinCoverage: d <= COVERAGE_RADIUS_MILES,
+      };
     }
   }
-  // JURISDICTION_COORDS is non-empty, so best is always set.
-  return best!;
+  return best;
+}
+
+/** Both layers of local law apply to one location, so return the nearest city AND
+ * the nearest county independently. Either can be null. */
+export function nearestByType(
+  lat: number,
+  lon: number,
+  jurisdictions: JurisdictionSummary[],
+): { city: NearestResult | null; county: NearestResult | null } {
+  const here: LatLon = { lat, lon };
+  return {
+    city: nearestOfType(here, jurisdictions, "city"),
+    county: nearestOfType(here, jurisdictions, "county"),
+  };
 }
 
 /** Human-friendly distance ("12 mi", "1,430 mi"). */

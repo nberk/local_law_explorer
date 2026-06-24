@@ -6,6 +6,18 @@
       "runtimeExecutable": "bun",
       "runtimeArgs": ["run", "dev"],
       "port": 4321
+    },
+    {
+      "name": "dev-rollout",
+      "runtimeExecutable": "bunx",
+      "runtimeArgs": ["astro", "dev", "--host", "0.0.0.0", "--port", "4330"],
+      "port": 4330
+    },
+    {
+      "name": "preview-rollout",
+      "runtimeExecutable": "bunx",
+      "runtimeArgs": ["astro", "preview", "--host", "0.0.0.0", "--port", "4331"],
+      "port": 4331
     }
   ]
 }

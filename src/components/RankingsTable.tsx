@@ -1,10 +1,15 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   DIMENSION_META,
   type DimensionKey,
   type JurisdictionSummary,
 } from "../lib/topics";
+import { loadIndexClient } from "../lib/clientData";
 import NationalPositionBar from "./NationalPositionBar";
+
+// At full scale ranking every covered jurisdiction would be a multi-thousand-row
+// DOM. Show the top slice on the chosen dimension (an honest cap, noted below).
+const TOP_N = 100;
 
 // English ordinal suffix for a whole number (1st, 2nd, 3rd, 11th…). The 11–13
 // exception takes "th" despite ending in 1/2/3, so check the last two digits first.
@@ -38,22 +43,36 @@ function dimValue(
 // City ranking — places each pilot on the national distribution for one chosen
 // dimension. National-percentile framing, never a leaderboard verdict: a high
 // position means the score is higher than most US towns, not "best" or "worst".
-export default function RankingsTable({
-  jurisdictions,
-}: {
-  jurisdictions: JurisdictionSummary[];
-}) {
+export default function RankingsTable() {
+  const [jurisdictions, setJurisdictions] = useState<
+    JurisdictionSummary[] | null
+  >(null);
   const [active, setActive] = useState<DimensionKey>("opacity");
   const meta = DIMENSION_META.find((m) => m.key === active)!;
 
-  const rows = useMemo(
+  useEffect(() => {
+    let alive = true;
+    loadIndexClient()
+      .then((d) => alive && setJurisdictions(d.jurisdictions))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const allRanked = useMemo(
     () =>
-      jurisdictions
+      (jurisdictions ?? [])
         .map((j) => ({ j, v: dimValue(j, active, meta.inverted) }))
         .filter((r): r is { j: JurisdictionSummary; v: number } => r.v !== null)
         .sort((a, b) => b.v - a.v),
     [jurisdictions, active, meta.inverted],
   );
+  const rows = allRanked.slice(0, TOP_N);
+
+  if (!jurisdictions) {
+    return <p className="text-[14px] text-ink-400">Loading rankings…</p>;
+  }
 
   return (
     <div>
@@ -112,8 +131,11 @@ export default function RankingsTable({
       </ol>
 
       <p className="mt-5 text-[11.5px] leading-relaxed text-ink-400">
-        Percentiles place each town against the ~2,287 cities and counties in the
-        LOCUS corpus. Machine estimates, shown as percentiles, not verdicts.
+        Showing the top {Math.min(TOP_N, rows.length)} of{" "}
+        {allRanked.length.toLocaleString()} covered jurisdictions on this
+        dimension. Percentiles place each town against the ~2,287 cities and
+        counties in the LOCUS corpus. Machine estimates, shown as percentiles, not
+        verdicts.
       </p>
     </div>
   );
