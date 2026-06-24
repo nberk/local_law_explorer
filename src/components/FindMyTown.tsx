@@ -195,19 +195,51 @@ export default function FindMyTown() {
       setStatus("Your browser can’t share a precise location. Try a ZIP below.");
       return;
     }
+    // Geolocation only works over a secure origin (https or localhost). Over
+    // plain http (e.g. a LAN IP) the call silently never resolves, so bail with
+    // a clear message instead of spinning forever.
+    if (!window.isSecureContext) {
+      setStatus(
+        "Location sharing needs a secure (https) connection. Try a ZIP below.",
+      );
+      return;
+    }
     setBusy(true);
     setStatus("Asking your browser for your location…");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setBusy(false);
-        resolveCoords(pos.coords.latitude, pos.coords.longitude, "device");
-      },
-      () => {
-        setBusy(false);
+
+    // Some browser/OS combinations (e.g. Chrome on macOS with system Location
+    // Services off) never fire EITHER callback and ignore the spec `timeout`,
+    // which leaves the spinner stuck. A wall-clock backstop guarantees we always
+    // exit the busy state; `settled` makes whichever fires first win and ignores
+    // any late stragglers.
+    let settled = false;
+    let guard: ReturnType<typeof setTimeout>;
+    const finish = (after?: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(guard);
+      setBusy(false);
+      after?.();
+    };
+    guard = setTimeout(() => {
+      finish(() =>
         setStatus(
-          "Couldn’t get your location (permission denied or unavailable). Try a ZIP below.",
-        );
-      },
+          "Still waiting on your browser’s location — it may be blocked at the system level. Try a ZIP below.",
+        ),
+      );
+    }, 12000);
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) =>
+        finish(() =>
+          resolveCoords(pos.coords.latitude, pos.coords.longitude, "device"),
+        ),
+      () =>
+        finish(() =>
+          setStatus(
+            "Couldn’t get your location (permission denied or unavailable). Try a ZIP below.",
+          ),
+        ),
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 },
     );
   };
