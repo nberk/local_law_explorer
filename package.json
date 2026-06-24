@@ -8,6 +8,8 @@
     "build": "astro build",
     "preview": "astro preview --host 0.0.0.0 --port 4321",
     "data:build": "python3 pipeline/build.py",
+    "data:search": "python3 pipeline/build_search.py",
+    "data:geo": "python3 pipeline/build_geo.py",
     "astro": "astro"
   },
   "devDependencies": {

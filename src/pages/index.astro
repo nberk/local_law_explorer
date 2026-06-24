@@ -1,6 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import JurisdictionPicker from "../components/JurisdictionPicker.tsx";
+import FindMyTown from "../components/FindMyTown.tsx";
 import { loadIndex } from "../lib/data";
 
 const { corpus, jurisdictions } = loadIndex();
@@ -26,10 +27,49 @@ const stats = [
       This is a browsable window into them, built on the open
       <a href="/about" class="underline hover:text-ink-900">LOCUS corpus</a>.
     </p>
+
+    <form action="/search" method="get" class="mt-6 relative max-w-xl">
+      <input
+        type="text"
+        name="q"
+        placeholder="Ask about a local law… e.g. “can I keep chickens?”"
+        autocomplete="off"
+        class="w-full rounded-lg border border-ink-200 bg-white px-4 py-3 pr-24 text-[15px] placeholder:text-ink-400 focus:border-accent-500 focus:outline-none"
+      />
+      <button
+        type="submit"
+        class="absolute right-1.5 top-1.5 rounded-md bg-ink-900 px-4 py-1.5 text-[14px] font-medium text-white transition hover:bg-ink-700"
+      >
+        Search
+      </button>
+    </form>
   </section>
 
-  <section class="max-w-7xl mx-auto px-6 pt-8 pb-4">
-    <JurisdictionPicker client:load jurisdictions={jurisdictions} />
+  <section class="max-w-7xl mx-auto px-6 pt-8">
+    <p class="font-mono text-[11px] uppercase tracking-wider text-ink-500">
+      Start here
+    </p>
+    <h2
+      class="mt-2 font-display text-2xl md:text-3xl font-semibold text-ink-900 leading-tight"
+    >
+      Find the town nearest you.
+    </h2>
+    <p class="mt-2 max-w-2xl text-[14px] leading-relaxed text-ink-600">
+      The pilot covers {jurisdictions.length} places. Share your location or type
+      a ZIP and we’ll point you at the closest one we have.
+    </p>
+    <div class="mt-5">
+      <FindMyTown client:load jurisdictions={jurisdictions} />
+    </div>
+  </section>
+
+  <section class="max-w-7xl mx-auto px-6 pt-12 pb-4">
+    <p class="font-mono text-[11px] uppercase tracking-wider text-ink-500">
+      Or browse the pilot
+    </p>
+    <div class="mt-4">
+      <JurisdictionPicker client:load jurisdictions={jurisdictions} />
+    </div>
   </section>
 
   <section class="max-w-7xl mx-auto px-6 pt-12">
