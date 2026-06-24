@@ -18,57 +18,49 @@ const stats = [
 ---
 
 <Layout>
-  <!-- hero -->
+  <!-- hero: find your town -->
   <section class="max-w-7xl mx-auto px-6 pt-14 pb-2">
     <h1
       class="font-display text-4xl md:text-5xl font-semibold text-ink-900 leading-[1.05] max-w-3xl"
     >
-      The local rules where you live, in plain sight.
+      The local laws where you live, in plain sight.
     </h1>
     <p class="mt-4 max-w-2xl text-[16px] leading-relaxed text-ink-600">
       City and county ordinances govern noise, pets, fences, permits, and
-      starting a business. They are public, but scattered and hard to read.
-      This site is a viewer for <strong class="text-ink-800">LOCUS</strong>, an
-      open dataset of U.S. local law released in <strong class="text-ink-800"
-        >June 2026</strong
-      > that gathered millions of these ordinances into one place. We don’t write
-      or change the law. We just make the data easy to explore.
-    </p>
-    <p class="mt-2 text-[13px] text-ink-500">
-      Source: <a
-        href="https://huggingface.co/datasets/LocalLaws/LOCUS-v1"
-        class="underline hover:text-ink-900"
-        rel="noopener">LOCUS-v1 on Hugging Face</a
-      > · <a
-        href="https://arxiv.org/abs/2606.19334"
-        class="underline hover:text-ink-900"
-        rel="noopener">the paper</a
-      > · <a href="/about" class="underline hover:text-ink-900"
-        >how this site is built</a
-      >.
+      starting a business — public, but scattered and hard to read. Start with
+      your own town.
     </p>
 
-    <form action="/search" method="get" class="mt-6 relative max-w-xl">
-      <input
-        type="text"
-        name="q"
-        placeholder="Ask about a local law… e.g. “can I keep chickens?”"
-        autocomplete="off"
-        class="w-full rounded-lg border border-ink-200 bg-white px-4 py-3 pr-24 text-[15px] placeholder:text-ink-400 focus:border-accent-500 focus:outline-none"
-      />
-      <button
-        type="submit"
-        class="absolute right-1.5 top-1.5 rounded-md bg-ink-900 px-4 py-1.5 text-[14px] font-medium text-white transition hover:bg-ink-700"
-      >
-        Search
-      </button>
-    </form>
+    <div class="mt-7">
+      <FindMyTown client:load />
+    </div>
   </section>
 
-  <!-- interactive spectra -->
-  <section class="max-w-7xl mx-auto px-6 pt-12">
+  <!-- pick a specific place -->
+  <section class="max-w-7xl mx-auto px-6 pt-16">
     <p class="font-mono text-[11px] uppercase tracking-wider text-ink-500">
-      Explore
+      Or pick a place
+    </p>
+    <h2
+      class="mt-2 font-display text-2xl md:text-3xl font-semibold text-ink-900 leading-tight"
+    >
+      Already know the town?
+    </h2>
+    <p class="mt-2 max-w-2xl text-[15px] leading-relaxed text-ink-600">
+      Search any of the {coveredCount.toLocaleString()} covered cities and
+      counties. Each opens with a portrait of how it governs compared with the
+      rest of the country, then everyday questions, notable rules, and the full
+      code to browse.
+    </p>
+    <div class="mt-6">
+      <JurisdictionPicker client:load />
+    </div>
+  </section>
+
+  <!-- see it in plain language (the spectrum explorers, demoted) -->
+  <section class="max-w-7xl mx-auto px-6 pt-20">
+    <p class="font-mono text-[11px] uppercase tracking-wider text-ink-500">
+      See it in plain language
     </p>
     <h2
       class="mt-2 font-display text-2xl md:text-3xl font-semibold text-ink-900 leading-tight max-w-3xl"
@@ -76,9 +68,9 @@ const stats = [
       The law isn’t one thing. Slide across it.
     </h2>
     <p class="mt-3 max-w-2xl text-[15px] leading-relaxed text-ink-600">
-      Every ordinance in the corpus is scored on a few dimensions. Drag the
-      handle to travel from one extreme to the other and read a real law at each
-      stop, with a plain-language version alongside the original.
+      Every ordinance is scored on a few dimensions. Drag the handle to travel
+      from one extreme to the other and read a real law at each stop, with a
+      hand-written plain-language version alongside the original.
     </p>
 
     <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -91,31 +83,8 @@ const stats = [
     </div>
   </section>
 
-  <!-- find your town -->
-  <section class="max-w-7xl mx-auto px-6 pt-16">
-    <p class="font-mono text-[11px] uppercase tracking-wider text-ink-500">
-      Go local
-    </p>
-    <h2
-      class="mt-2 font-display text-2xl md:text-3xl font-semibold text-ink-900 leading-tight"
-    >
-      Find your town.
-    </h2>
-    <p class="mt-2 max-w-2xl text-[15px] leading-relaxed text-ink-600">
-      Each place opens with a portrait of how it governs compared with the rest
-      of the country, then everyday questions, notable rules, and the full code
-      to browse.
-    </p>
-    <div class="mt-6">
-      <FindMyTown client:load />
-    </div>
-    <div class="mt-10">
-      <JurisdictionPicker client:load />
-    </div>
-  </section>
-
   <!-- corpus scale -->
-  <section class="max-w-7xl mx-auto px-6 pt-16">
+  <section class="max-w-7xl mx-auto px-6 pt-20">
     <div class="max-w-3xl">
       <p class="font-mono text-[11px] uppercase tracking-wider text-ink-500">
         The dataset
@@ -128,10 +97,26 @@ const stats = [
       <p class="mt-3 text-[15px] leading-relaxed text-ink-600">
         Local ordinances are the most fragmented body of law in the United
         States. There is no central index. Every town’s code lives on a
-        different site or in a PDF, in its own format. The open LOCUS corpus
-        gathered these codes, read them with OCR, and labeled every provision
-        into one uniform table. This site renders a detailed page for every one
-        of the {coveredCount.toLocaleString()} cities and counties in it.
+        different site or in a PDF, in its own format. This site is a viewer for
+        <strong class="text-ink-800">LOCUS</strong>, an open dataset released in
+        <strong class="text-ink-800">June 2026</strong> that gathered these
+        codes, read them with OCR, and labeled every provision into one uniform
+        table. We don’t write or change the law — we render a detailed page for
+        every one of the {coveredCount.toLocaleString()} cities and counties in
+        it.
+      </p>
+      <p class="mt-2 text-[13px] text-ink-500">
+        Source: <a
+          href="https://huggingface.co/datasets/LocalLaws/LOCUS-v1"
+          class="underline hover:text-ink-900"
+          rel="noopener">LOCUS-v1 on Hugging Face</a
+        > · <a
+          href="https://arxiv.org/abs/2606.19334"
+          class="underline hover:text-ink-900"
+          rel="noopener">the paper</a
+        > · <a href="/about" class="underline hover:text-ink-900"
+          >how this site is built</a
+        >.
       </p>
     </div>
 

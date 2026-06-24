@@ -7,14 +7,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Local Law Lookup — a free, non-commercial static site that turns the open
 **LOCUS-v1** local-ordinance corpus into plain, readable city/county law for
 ordinary people. Live at https://locallaw.pages.dev. The **homepage** leads with
-two interactive **spectrum explorers** (`SpectrumExplorer`: opacity and
-paternalism) that sample ~20 real laws across a score dimension and pair the
-verbatim text with a hand-authored plain-language translation; the city picker
-sits below them. Each jurisdiction page opens with a synthesized **Place
-Portrait** (how this town governs vs. the rest of the US), then everyday "Can
-I…?" questions, then notable rules, and only then a full searchable browse ("dig
-deeper"). Two site-level views round it out: `/rankings` (pilots on the national
-scale) and `/legalese` (a playful opacity meter). Not legal advice; the text is
+**"find your town"** (`FindMyTown`) as the hero — the core job-to-be-done is
+"what are the local laws where I live?" — then the search-first
+`JurisdictionPicker` ("already know the town?"), then two interactive **spectrum
+explorers** (`SpectrumExplorer`: opacity and paternalism) demoted below the
+fold as the plain-language showcase (they sample ~20 real laws across a score
+dimension and pair the verbatim text with a hand-authored plain-language
+translation), then a dataset explainer. Each jurisdiction page opens with a
+synthesized **Place Portrait** (how this town governs vs. the rest of the US),
+then everyday "Can I…?" questions, then notable rules, and only then a full
+searchable browse ("dig deeper") — this in-town browse/search (`LawBrowser`) is
+the site's only free-text search. Two site-level views round it out: `/rankings`
+(pilots on the national scale) and `/legalese` (a playful opacity meter). Not
+legal advice; the text is
 OCR'd, every label/score is a machine estimate, and plain-language translations
 are AI paraphrases, not the law.
 
@@ -35,7 +40,6 @@ bun run dev                 # dev server at http://localhost:4321 (binds 0.0.0.0
 bun run build               # static output → dist/
 bun run preview             # serve the built dist/
 bun run data:build          # regenerate per-jurisdiction JSON (see pipeline below)
-bun run data:search         # rebuild the global semantic-search index (needs: pip install fastembed)
 bun run data:geo            # rebuild the ZIP→coords table for "Find my town" (needs: pip install certifi)
 bun run data:geocode        # write lat/lon onto each jurisdiction + ZIP→county (needs: pip install certifi)
 ```
@@ -120,12 +124,15 @@ they meet only at JSON files in `public/data/`.
    it on mount.
 
    Site-level surfaces sit on top of the per-jurisdiction pages: the **homepage**
-   leads with two `SpectrumExplorer` islands over `spectrum.json` (a draggable
+   hero is `FindMyTown` (the primary "what are the laws where I live?" action),
+   then the **search-first** `JurisdictionPicker` (a largest-first shortlist until
+   you type, then name/state filtering capped at ~60 results — it must not render
+   ~2,000 cards), then two `SpectrumExplorer` islands over `spectrum.json`
+   (demoted below the fold as the plain-language showcase — a draggable
    tick-marked rail per dimension, plain-language ⇄ original toggle; opacity also
-   shows readability facts + a "squint" blur), then the **search-first**
-   `JurisdictionPicker` (a largest-first shortlist until you type, then name/state
-   filtering capped at ~60 results — it must not render ~2,000 cards) and
-   `FindMyTown`, then a compact dataset explainer; `/rankings` (`RankingsTable`)
+   shows readability facts + a "squint" blur), then a compact dataset explainer.
+   There is no global free-text search surface; search is an in-town action in
+   `LawBrowser`. `/rankings` (`RankingsTable`)
    places covered jurisdictions on the national distribution per dimension
    (top-100 on the chosen axis; national-percentile framing, never a leaderboard
    verdict); and `/legalese` (`LegaleseMeter`) is a playful gauge over
@@ -142,7 +149,7 @@ they meet only at JSON files in `public/data/`.
    output).
 
 The **small** files in `public/data/` are **committed** (`index.json`,
-`baselines.json`, `legalese.json`, `spectrum.json`, `geo/`, `search/`; the 19
+`baselines.json`, `legalese.json`, `spectrum.json`, `geo/`; the 19
 pilot per-jurisdiction files remain too as an offline-dev fallback) so the site
 builds and deploys without running the pipeline; CI never runs it. The **large**
 per-jurisdiction files are NOT committed — at full scale they live in R2 and are
@@ -155,26 +162,19 @@ not committed, so either set `PUBLIC_DATA_BASE_URL` to the R2 URL in `.env`, or
 copy a `data-build/` slice into `public/data/`. The default `PUBLIC_DATA_BASE_URL`
 is `/data`, which serves the committed pilots offline.
 
-### Global semantic search ("Ask the law", `/search`)
+### Search (in-town only)
 
-A site-wide plain-language search that returns the **real ordinances most related
-to a question, ranked by meaning, across all pilots** — never an AI-written
-answer (the only model touch is embedding the *query*, so the "original text only
-/ no LLM summaries" guardrail holds). See `docs/global-semantic-search.md` for the
-full design and the locked decisions.
-
-- **Offline** (`pipeline/build_search.py`, `fastembed` bge-small-en-v1.5) embeds
-  every law and emits `public/data/search/{vectors.bin, meta.json, manifest.json}`
-  — int8 vectors (44k×384, ~17 MB) + index-aligned metadata rows. Committed like
-  the rest of `public/data/`.
-- **Runtime**: `functions/api/search.ts` (a Cloudflare Pages Function) embeds the
-  user's query via Workers AI (same model). `GlobalSearch.tsx` downloads the
-  vectors once (lazy, on first search), ranks them in a **Web Worker**
-  (`searchWorker.ts`) by cosine, and renders results that deep-link to
-  `/<jurisId>?law=<id>` (handled in `LawBrowser`). An instant **lexical** layer
-  (`src/lib/search.ts` + `SEARCH_SYNONYMS`) shows results immediately and is the
-  fallback if the function is down. Vector-space match between fastembed and
-  Workers AI must be validated (see the doc's "validate" gate).
+There is **no global cross-jurisdiction search**. A broken global semantic-search
+stack (`/search`, `GlobalSearch.tsx`, `searchWorker.ts`, `src/lib/search.ts`,
+`functions/api/search.ts`, `pipeline/build_search.py`) was **removed on
+2026-06-24** — its index files (`public/data/search/*`) were never actually
+committed, so the page was a dead end (see `docs/homepage-declutter-search.md`).
+Search now lives **inside a place page**: `LawBrowser` searches that town's loaded
+laws (title-prefix > title > section > body), which needs no index infra and
+works at full rollout. The decision was "direction A: in-town search," with
+plain-language translation kept **hand-authored only** (in `spectrum.json`, shown
+by the spectrum explorers) — no runtime model call over law text. If a global
+semantic search is ever revived (direction B), it returns to the git history.
 
 ### Find my town (homepage geolocation)
 
@@ -274,13 +274,12 @@ The search-first picker no longer buckets on `size`; it orders by law count
   tier: 10 GB storage (≈4.6 GB used), egress free, Class-B reads 10M/mo. *(Bucket
   + env var are provisioned during the one-time rollout — see `docs/full-rollout.md`.)*
 - **Pages Functions** live in `functions/` (repo root) and deploy automatically
-  alongside the static `dist/` — no build-config change. `functions/api/search.ts`
-  needs a **Workers AI binding named `AI`** on the Pages project (dashboard →
-  Settings → Functions → bindings); without it, search degrades to the lexical
-  fallback. `functions/api/where.ts` (IP geo) needs no binding. `astro dev` does
-  **not** run Functions — use `bunx wrangler pages dev dist` (with CF login) to
-  test the semantic/IP-geo paths locally; the lexical + browser-geo + ZIP paths
-  work under plain `astro dev`.
+  alongside the static `dist/` — no build-config change. The only function is
+  `functions/api/where.ts` (IP geo), which needs **no binding** (the former
+  Workers-AI-backed `functions/api/search.ts` was removed with the global-search
+  retirement). `astro dev` does **not** run Functions — use
+  `bunx wrangler pages dev dist` (with CF login) to test the IP-geo path locally;
+  the browser-geo + ZIP paths work under plain `astro dev`.
 
 ## Constraints to preserve
 
@@ -294,18 +293,17 @@ The search-first picker no longer buckets on `size`; it orders by law count
   estimates and phrased as percentiles ("plainer than 70% of towns"), never
   verdicts; `problem_salience` stays out of visible copy until verified; questions
   surface "rules that mention this," not yes/no answers; notable rules state they
-  match words, not meaning; **global search returns "ordinances most related to
-  your question," ranked by meaning — never a written answer** (the only model
-  call embeds the query, not the law text).
+  match words, not meaning; in-town search (`LawBrowser`) ranks the town's own
+  laws by keyword match and never writes an answer.
 - **Plain-language translations: allowed, but always labeled and secondary.** The
   old "original text only" guardrail (plan doc D1) was **lifted (2026-06-23)** at
   the user's direction. We may publish plain-language translations of laws, but:
   they appear *alongside* the verbatim text (never replacing it), are labeled "AI
   paraphrase, not the law — verify before relying on it," and live only in
   `public/data/spectrum.json`. They are **hand-authored and committed**, never
-  generated at build time. Portrait, questions, notable, and global search make no
-  model calls at build time; global search's one runtime model call embeds the
-  *query* only (Workers AI), never the law text.
+  generated at build time. Nothing on the site makes a model call over law text
+  at build time or runtime — portrait, questions, notable, in-town search, and
+  the translations are all precomputed or hand-written.
 
 ## Deeper context
 
