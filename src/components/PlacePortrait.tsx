@@ -1,4 +1,6 @@
-import type { Portrait } from "../lib/topics";
+import { useState } from "react";
+import { DIMENSION_META, type Law, type Portrait } from "../lib/topics";
+import DimensionLaws from "./DimensionLaws";
 
 // A thin 0-100 track with a marker showing where this town sits nationally.
 function PercentileBar({ pct }: { pct: number }) {
@@ -14,23 +16,39 @@ function PercentileBar({ pct }: { pct: number }) {
 
 // Module 1 — how this town's laws compare to the rest of the country, derived
 // from the four LOCUS model dimensions and its topic mix. Every statement is a
-// machine estimate; the copy says so and links to the method note.
+// machine estimate; the copy says so and links to the method note. Each writing-
+// style dimension expands to the actual laws behind its score (DimensionLaws).
 export default function PlacePortrait({
   portrait,
   name,
+  stateName,
+  laws,
 }: {
   portrait: Portrait;
   name: string;
+  stateName: string;
+  laws: Law[];
 }) {
-  // Lead with the concrete topic stand-outs, then the writing-style dimensions.
-  // Skip problem_salience (sentence === null / verifyCopy) until its meaning is
-  // confirmed against the paper.
-  const rows = [
-    ...portrait.topicMix.map((t) => ({ key: t.topic, sentence: t.sentence, pct: t.percentile })),
-    ...portrait.dimensions
-      .filter((d) => d.sentence && !d.verifyCopy)
-      .map((d) => ({ key: d.key, sentence: d.sentence as string, pct: d.displayPercentile ?? d.percentile })),
-  ];
+  const [openDim, setOpenDim] = useState<string | null>(null);
+
+  // Topic stand-outs are static context. Skip problem_salience (sentence === null
+  // / verifyCopy) until its meaning is confirmed against the paper.
+  const topicRows = portrait.topicMix.map((t) => ({
+    key: t.topic,
+    sentence: t.sentence,
+    pct: t.percentile,
+  }));
+  const dimRows = portrait.dimensions
+    .filter((d) => d.sentence && !d.verifyCopy)
+    .map((d) => ({
+      key: d.key,
+      sentence: d.sentence as string,
+      pct: d.displayPercentile ?? d.percentile,
+      meta: DIMENSION_META.find((m) => m.key === d.key),
+    }))
+    .filter((d) => d.meta);
+
+  const hasRows = topicRows.length + dimRows.length > 0;
 
   return (
     <section className="mt-10">
@@ -61,20 +79,58 @@ export default function PlacePortrait({
         </p>
       )}
 
-      {rows.length > 0 && (
+      {hasRows && (
         <>
           <p className="mt-4 text-[13.5px] text-ink-500">
             Compared with the rest of the country, {name}…
           </p>
           <ul className="mt-3 space-y-3">
-            {rows.map((r) => (
-              <li key={r.key} className="grid grid-cols-1 gap-1.5 sm:grid-cols-[1fr_120px] sm:items-center sm:gap-4">
+            {topicRows.map((r) => (
+              <li
+                key={r.key}
+                className="grid grid-cols-1 gap-1.5 sm:grid-cols-[1fr_120px] sm:items-center sm:gap-4"
+              >
                 <span className="text-[14px] leading-snug text-ink-800">{r.sentence}</span>
                 <span className="hidden sm:block">
                   <PercentileBar pct={r.pct} />
                 </span>
               </li>
             ))}
+
+            {dimRows.map((r) => {
+              const open = openDim === r.key;
+              return (
+                <li key={r.key} className="rounded-lg border border-[var(--rule)] bg-white">
+                  <button
+                    onClick={() => setOpenDim(open ? null : r.key)}
+                    aria-expanded={open}
+                    className="w-full px-3 py-2.5 text-left transition hover:bg-ink-50/60"
+                  >
+                    <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-[1fr_120px] sm:items-center sm:gap-4">
+                      <span className="text-[14px] leading-snug text-ink-800">
+                        {r.sentence}
+                      </span>
+                      <span className="hidden sm:block">
+                        <PercentileBar pct={r.pct} />
+                      </span>
+                    </div>
+                    <span className="mt-1 inline-block text-[11.5px] text-accent-600">
+                      {open ? "Hide the laws behind this" : "See the laws behind this →"}
+                    </span>
+                  </button>
+                  {open && r.meta && (
+                    <div className="px-3 pb-3">
+                      <DimensionLaws
+                        laws={laws}
+                        meta={r.meta}
+                        jurisName={name}
+                        stateName={stateName}
+                      />
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </>
       )}

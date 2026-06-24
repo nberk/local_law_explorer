@@ -9,8 +9,10 @@ Local Law Lookup — a free, non-commercial static site that turns the open
 ordinary people. Live at https://locallaw.pages.dev. Each jurisdiction page opens
 with a synthesized **Place Portrait** (how this town governs vs. the rest of the
 US), then everyday "Can I…?" questions, then notable rules, and only then a full
-searchable browse ("dig deeper"). Pilot covers **19 jurisdictions**. Not legal
-advice; the text is OCR'd and every label/score is a machine estimate.
+searchable browse ("dig deeper"). Two site-level views round it out: `/rankings`
+(pilots on the national scale) and `/legalese` (a playful opacity meter). Pilot
+covers **19 jurisdictions**. Not legal advice; the text is OCR'd and every
+label/score is a machine estimate.
 
 ## Commands
 
@@ -50,17 +52,33 @@ they meet only at JSON files in `public/data/`.
      + percentiles + `lowConfidence`/`limitedCoverage` flags), `match_questions`
      (the "Can I…?" lens), `notable_rules` (distinctiveness heuristic). Writes
      `public/data/<state>/<slug>.json` (portrait + questions + notable + laws) plus
-     an `index.json` manifest entry (counts, size, `portraitTeaser`).
+     an `index.json` manifest entry (counts, size, `portraitTeaser`, and
+     `dimensions` = per-dimension national percentiles for the ranking page).
+   - **Legalese gallery** (`build_legalese`): collects the most opaque laws across
+     all pilots (capped per jurisdiction), emits `public/data/legalese.json` for
+     the Legalese-o-Meter page.
 
 2. **Static site** (Astro 6 + React islands + Tailwind v4) — at build time
    `src/lib/data.ts` reads the JSON (`loadIndex`, `loadJurisdiction`,
-   `loadBaselines`) and `src/pages/[state]/[city].astro` statically generates one
-   page per jurisdiction via `getStaticPaths`. In the browser, a **single**
-   `JurisdictionModules` island `fetch`es that jurisdiction's file **once** and
-   shares the parsed document across `PlacePortrait`, `CommonQuestions`,
-   `NotableRules`, and the `LawBrowser` browse tail (avoiding a 4× refetch of a
-   multi-MB file). All heavy work is at build time; the browser downloads JSON and
-   filters/renders.
+   `loadBaselines`, `loadLegalese`) and `src/pages/[state]/[city].astro`
+   statically generates one page per jurisdiction via `getStaticPaths`. In the
+   browser, a **single** `JurisdictionModules` island `fetch`es that
+   jurisdiction's file **once** and shares the parsed document across
+   `PlacePortrait`, `CommonQuestions`, `NotableRules`, and the `LawBrowser` browse
+   tail (avoiding a 4× refetch of a multi-MB file). All heavy work is at build
+   time; the browser downloads JSON and filters/renders.
+
+   Three site-level surfaces sit on top of the per-jurisdiction pages: the
+   homepage opens with a "what this is" explainer + corpus scale + dataset link;
+   `/rankings` (`RankingsTable`) places the pilots on the national distribution
+   per dimension (national-percentile framing, never a leaderboard verdict); and
+   `/legalese` (`LegaleseMeter`) is a playful gauge over `legalese.json`. Inside a
+   place page, each Place Portrait dimension bar expands into `DimensionLaws` —
+   the town's own laws ranked by that raw z-score. `LawBrowser` shows place-aware
+   starter chips (`BROWSE_SUGGESTIONS`, filtered to terms that actually match
+   locally). Shared dimension labels/direction live in `DIMENSION_META`
+   (`topics.ts`); readability math for the meter lives in `src/lib/readability.ts`
+   (deterministic facts, not model output — keeps the "original text only" rule).
 
 `public/data/` is **committed** (~92 MB; largest file ~15 MB) so the site builds
 and deploys without running the pipeline; CI never runs it. Re-run
@@ -83,7 +101,8 @@ the whole corpus, ~seconds).
   **`problem_salience` is a social-problem axis (skews to crime/loitering), NOT a
   relevance score** — it's deliberately omitted from visible portrait copy
   (`verifyCopy` flag) until its meaning is verified against the paper; never sort
-  the browse by it.
+  the browse by it, and it is excluded from the dimension explorer and city
+  ranking (`DIMENSION_META` lists only the three verified dimensions).
 - **Synthesized views** (precomputed in the pipeline, rendered client-side):
   `portrait` (comparative percentiles + sentences, all labeled estimates),
   `questions` (`{id, matches[]}`; `QUESTIONS_META` ids ↔ `QUESTIONS` in the

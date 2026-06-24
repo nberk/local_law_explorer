@@ -3,6 +3,7 @@ import {
   LENSES,
   TOPICS,
   BOILERPLATE,
+  BROWSE_SUGGESTIONS,
   type Jurisdiction,
   type Law,
   type LensId,
@@ -61,6 +62,20 @@ export default function LawBrowser({
     data?.laws.forEach((l) => l.lenses.forEach((ln) => (c[ln] = (c[ln] || 0) + 1)));
     return c;
   }, [data]);
+
+  // Starter chips: keep only the suggestions that actually match a law in the
+  // current lens, so a chip never lands on an empty result set.
+  const suggestions = useMemo(() => {
+    if (!data) return [];
+    const inLens = data.laws.filter((l) => l.lenses.includes(lens));
+    return BROWSE_SUGGESTIONS.filter((s) =>
+      inLens.some(
+        (l) =>
+          l.title.toLowerCase().includes(s.term) ||
+          l.content.toLowerCase().includes(s.term),
+      ),
+    );
+  }, [data, lens]);
 
   const filtered = useMemo(() => {
     if (!data) return [];
@@ -147,6 +162,21 @@ export default function LawBrowser({
           </span>
         )}
       </div>
+
+      {!q.trim() && suggestions.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <span className="text-[12px] text-ink-400">Try:</span>
+          {suggestions.map((s) => (
+            <button
+              key={s.term}
+              onClick={() => setQ(s.term)}
+              className="rounded-full border border-ink-200 bg-white px-2.5 py-0.5 text-[12px] text-ink-600 transition hover:border-accent-500 hover:text-accent-700"
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {lens === "everyday" && (
         <div className="mt-3 flex flex-wrap gap-1.5">

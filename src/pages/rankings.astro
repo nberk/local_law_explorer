@@ -1,0 +1,38 @@
+---
+import Layout from "../layouts/Layout.astro";
+import RankingsTable from "../components/RankingsTable.tsx";
+import { loadIndex } from "../lib/data";
+
+const { jurisdictions } = loadIndex();
+---
+
+<Layout
+  title="How these towns compare — Local Law Lookup"
+  description="The pilot jurisdictions placed on the national scale: writing plainness, how much personal conduct is regulated, and how much is left to officials. Machine estimates, not verdicts. Not legal advice."
+>
+  <section class="max-w-3xl mx-auto px-6 pt-12 pb-12">
+    <p class="font-mono text-[11px] uppercase tracking-wider text-ink-500">
+      City ranking
+    </p>
+    <h1 class="mt-2 font-display text-4xl font-semibold text-ink-900">
+      How these towns compare
+    </h1>
+    <p class="mt-3 text-[15px] leading-relaxed text-ink-600">
+      Each town placed on the national scale: where it sits among the ~2,287 U.S.
+      cities and counties in the LOCUS corpus on three machine-scored dimensions.
+      These are percentiles, not verdicts. A higher position means the score runs
+      higher than most towns, not that a place is better or worse.
+    </p>
+    <div
+      class="mt-4 rounded-lg border border-ink-100 bg-ink-50 px-4 py-3 text-[12.5px] text-ink-600 leading-relaxed"
+    >
+      Only the {jurisdictions.length} pilot towns are listed, ranked by their national
+      percentile. Scores are machine estimates from the LOCUS models.
+      <span class="font-medium text-ink-800">Not legal advice.</span>
+    </div>
+
+    <div class="mt-7">
+      <RankingsTable client:load jurisdictions={jurisdictions} />
+    </div>
+  </section>
+</Layout>

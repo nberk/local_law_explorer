@@ -549,6 +549,43 @@ def _headline(op_pctl, topic_mix):
     return f"{topic_part}, {style}"
 
 
+# Per-jurisdiction national percentiles for the city-ranking page. Only the three
+# verified dimensions; problem_salience is omitted (its meaning is unverified vs
+# the paper, so it is never ranked or shown).
+def summary_dimensions(portrait):
+    keep = ("opacity", "paternalism", "enforcement_discretion")
+    out = {}
+    for d in portrait["dimensions"]:
+        if d["key"] not in keep:
+            continue
+        entry = {"percentile": d["percentile"]}
+        if d.get("displayPercentile") is not None:
+            entry["displayPercentile"] = d["displayPercentile"]
+        out[d["key"]] = entry
+    return out
+
+
+# Legalese-o-Meter gallery: the most opaque laws across the pilots, capped per
+# jurisdiction so the "show me another baffling law" tour spans different towns
+# instead of one big-city code dominating the list.
+LEGALESE_N, LEGALESE_PER_JURIS, LEGALESE_CONTENT_CAP = 60, 6, 8000
+
+
+def build_legalese(pool):
+    pool = sorted(pool, key=lambda c: -c["opacity"])
+    seen, picked = {}, []
+    for c in pool:
+        if seen.get(c["jurisId"], 0) >= LEGALESE_PER_JURIS:
+            continue
+        seen[c["jurisId"]] = seen.get(c["jurisId"], 0) + 1
+        # Cap the wall of text: the densest laws can be 25k-char OCR run-ons, and
+        # 8k chars is still plenty to demonstrate density and compute readability.
+        picked.append({**c, "content": c["content"][:LEGALESE_CONTENT_CAP]})
+        if len(picked) >= LEGALESE_N:
+            break
+    return picked
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument(
@@ -599,6 +636,7 @@ def main():
         print("  %-28s %5d rows" % (f"{state}/{city}", len(rows)))
 
     manifest = []
+    legalese_pool = []
     for (state, city), laws in sorted(by_juris.items()):
         slug = city
         name = display_name(city)
@@ -633,6 +671,22 @@ def main():
         opacities = sorted(l["scores"]["opacity"] for l in out_laws if l["scores"]["opacity"] is not None)
         median_op = opacities[len(opacities) // 2] if opacities else None
 
+        for law in out_laws:
+            op = law["scores"]["opacity"]
+            if op is None:
+                continue
+            legalese_pool.append({
+                "jurisId": f"{state}/{slug}",
+                "jurisName": name,
+                "state": state.upper(),
+                "slug": slug,
+                "title": law["title"],
+                "section": law["section"],
+                "topic": law["topic"],
+                "opacity": op,
+                "content": law["content"],
+            })
+
         juris_doc = {
             "id": f"{state}/{slug}",
             "name": name,
@@ -658,6 +712,7 @@ def main():
             "medianOpacity": median_op,
             "size": "large" if total >= 1000 else "small",
             "portraitTeaser": {"headline": portrait["headline"], "lowConfidence": portrait["lowConfidence"]},
+            "dimensions": summary_dimensions(portrait),
         })
         nq = sum(1 for q in questions if q["matches"])
         print("  wrote %-28s %5d laws  | %d/%d questions, %d notable  | %s"
@@ -669,6 +724,11 @@ def main():
     }
     (out / "index.json").write_text(json.dumps(index, ensure_ascii=False))
     print("Wrote %s (%d jurisdictions)" % (out / "index.json", len(manifest)))
+
+    legalese = build_legalese(legalese_pool)
+    (out / "legalese.json").write_text(
+        json.dumps({"generated": "2026-06-23", "laws": legalese}, ensure_ascii=False))
+    print("Wrote %s (%d laws)" % (out / "legalese.json", len(legalese)))
 
 
 if __name__ == "__main__":

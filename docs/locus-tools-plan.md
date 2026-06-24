@@ -490,3 +490,156 @@ parquet, so it's done once for every jurisdiction.
 axis (skews to crime/loitering/nuisance) and is wrong for the business/renting
 lenses. Do not use it as the relevance sort.
 ```
+
+## 14. v3 — comparative & playful layer (BUILT 2026-06-23, local)
+
+Five features that push the site from "look up one town" toward "feel how this
+town compares, and have fun poking at the data." All preserve the honesty
+guardrails (§9): scores stay labeled machine estimates, phrased as percentiles,
+never verdicts.
+
+**Status: all five built and building green** (`bun run build`, 23 pages). New
+data artifacts (`index.json` `dimensions`, `legalese.json`) were derived from the
+committed per-jurisdiction JSON (logic mirrored from `build.py`, which was also
+updated to emit them canonically — a future `bun run data:build` reproduces them
+identically). Not yet committed/deployed. Files added: `RankingsTable`,
+`LegaleseMeter`, `DimensionLaws` components; `readability.ts`; `rankings.astro`,
+`legalese.astro` pages. Deferred nicety: reusing the gauge inside the Feature-2
+opacity expander (kept separate to avoid coupling the meter to the `Law` shape).
+
+**Decisions locked (user, 2026-06-23):**
+- **`problem_salience` stays hidden.** Sliders + ranking use only the three
+  verified dimensions: `opacity`, `paternalism`, `enforcement_discretion`. The
+  `verifyCopy` guardrail is untouched. (Un-hiding still gated on verifying it
+  against arXiv 2606.19334 — see §13 / Known follow-ups.)
+- **Ranking is national-percentile, not a leaderboard.** We place the 19 pilots
+  on the full ~2,287-jurisdiction US distribution ("plainer than 80% of US
+  towns"), never "#1 most X city in America." Avoids implying the pilots are the
+  national extremes and reuses `baselines.json`.
+- **Dimension explorer lives inside the Portrait.** Each portrait dimension bar
+  expands to reveal the actual laws behind the score.
+
+### 14.0 Shared groundwork
+
+- **`DIMENSION_META` in `src/lib/topics.ts`** — single source of truth for the
+  three visible dimensions: `{ key, label, highMeans, lowMeans, inverted }`.
+  `opacity` has `inverted: true` (shown as "plainness" = `100 − percentile`,
+  matching `displayPercentile`). Reused by features 2, 3, 5 so labels/direction
+  never drift between views.
+- Honesty copy helper: every dimension surface carries a one-line "machine
+  estimate" caveat near the number.
+
+### 14.1 Feature 1 — "What this is" on the homepage  (no data change)
+
+Put the "most fragmented body of law in America" framing on the landing page,
+with the concrete scale and a link to the source dataset.
+
+- **Where:** homepage (`src/pages/index.astro`), below the city picker so the
+  primary action stays above the fold (per §12 mobile pass). Mirror the scale
+  line + dataset link on `/about` and add the dataset link to the footer.
+- **Copy (plain, per house style; final headline TBD — options below):**
+  > Local ordinances are the most scattered body of law in the United States.
+  > There is no central index. Every town's code lives on a different site or in
+  > a PDF, in its own format, impossible to compare. LOCUS collected them, read
+  > them with OCR, and labeled every provision into one uniform table. That makes
+  > something new possible: putting your town's rules side by side with everyone
+  > else's.
+- **Scale line (from the live index, exact):** 2,211,516 provisions · 1,644
+  cities + 345 counties · all 50 states · machine-labeled and scored. **This
+  pilot renders 19.**
+- **Source links:** dataset → `https://huggingface.co/datasets/LocalLaws/LOCUS-v1`;
+  paper → arXiv 2606.19334.
+- **Headline options (pick one):** "The most scattered law in America, in one
+  place" · "Local law, finally comparable" · "Every town writes its own rules.
+  We put them side by side." · "What is this?" · "The fine print of 2,000 towns,
+  in one table" · "Your town's rules, measured against everyone else's."
+
+### 14.2 Feature 2 — Dimension explorer inside the Portrait  (no data change)
+
+Each law already carries all four raw z-scores (verified 100% populated in a
+158-law town and a 7,541-law city), and `JurisdictionModules` already holds the
+full document — so this is pure frontend.
+
+- **Interaction:** in `PlacePortrait`, each of the 3 visible dimension rows
+  becomes expandable. Expanded, it shows *this town's* laws ranked by that
+  dimension's raw z-score, with a "rank rail": a draggable scrubber where the
+  left end is the most extreme law and the right end the least, plus **"Most"**
+  and **"Least"** snap buttons. Moving the scrubber swaps the law shown (reusing
+  a compact `LawCard`), with its z-score and where it sits in the town's spread.
+- **Why this placement helps honesty:** it turns an abstract "+1.2 opacity" into
+  the concrete paragraph that earned it — the score becomes inspectable, not
+  asserted.
+- **New piece:** `src/components/DimensionLaws.tsx` (the rail + card), rendered
+  by `PlacePortrait`. Guards against null scores (filter them out of the ranking).
+
+### 14.3 Feature 3 — City ranking page  (small pipeline change)
+
+- **Pipeline (`pipeline/build.py`):** `build_portrait` already computes each
+  town's national percentile per dimension. Also write a compact copy into the
+  `index.json` summary:
+  ```jsonc
+  "dimensions": {
+    "opacity":                { "percentile": 71, "displayPercentile": 29 },
+    "paternalism":            { "percentile": 64 },
+    "enforcement_discretion": { "percentile": 48 }
+  }
+  ```
+  (`problem_salience` deliberately omitted.) Type added to `JurisdictionSummary`
+  in `topics.ts`.
+- **Page:** `src/pages/rankings.astro` + a `RankingsTable.tsx` island. One row per
+  pilot, a dimension toggle (Plainness / Paternalism / Enforcement discretion),
+  rows sorted by the chosen dimension's national percentile, rendered as labeled
+  percentile bars. Opacity shown as "plainness" (`displayPercentile`) to match
+  the portrait convention.
+- **Framing (honesty):** header reads "Where these 19 towns sit on the national
+  scale — out of ~2,287 US jurisdictions in LOCUS. Machine estimates, not
+  verdicts." No superlatives.
+- **Nav:** add "Rankings" to the header.
+
+### 14.4 Feature 4 — Search suggestions in the browse tail  (no data change)
+
+Give people a starting point that never dead-ends.
+
+- **Place-aware chips:** `Jurisdiction.questions` already lists which of the 12
+  curated "Can I…?" questions have matches *here*. Add a `searchTerm` to each
+  `QUESTIONS_META` entry (e.g. `backyard_chickens → "chicken"`). In `LawBrowser`,
+  render a chip per question that has matches in this town; clicking sets the
+  search query.
+- **Evergreen fallback set:** a small everyday list (chickens, noise, parking,
+  fence, dogs, fireworks, trees, garbage, signs). Filter it the same way — only
+  show a chip if it returns ≥1 result in this town's laws (cheap scan; reuse the
+  existing search). No chip ever leads to "no results."
+- **Where:** below the search box in `LawBrowser.tsx`, styled as subtle tags.
+
+### 14.5 Feature 5 — The "Legalese-o-Meter"  (small pipeline change)
+
+A playful surface for the densest laws, with a "show me another baffling one"
+jump and a graphic that conveys *how hard to read* a law is. Honesty anchor: the
+opacity score is a labeled machine estimate, but the readability stats shown
+alongside it are **deterministic facts** computed from the actual text (sentence
+length, long-word share, an estimated reading grade) — no rewrite of the legal
+text, so the "original text only" guardrail (D1) holds.
+
+- **Build artifact:** `pipeline/build.py` emits `public/data/legalese.json` — the
+  top ~60 most opaque laws across all pilots: `{ jurisId, jurisName, state, slug,
+  title, section, topic, opacity, content }`. (Client-side aggregation is
+  impossible without loading every multi-MB file, so this is computed once at
+  build.)
+- **Page:** `src/pages/legalese.astro` + `LegaleseMeter.tsx` island reading that
+  file. A "Show me another baffling law →" button cycles through the set. The
+  same meter component is reused inside Feature 2's opacity expander.
+- **Graphic direction (chosen 2026-06-23):** the **Legalese-o-Meter gauge** — a
+  needle dial (Plain English → Pure Legalese) driven by the opacity percentile,
+  plus deterministic readability facts (avg sentence length, longest sentence,
+  estimated reading grade) and a playful band-keyed verdict line. The "squint
+  test" blur is an **optional toggle** layered on top, off by default.
+
+### 14.6 Data-contract summary & build order
+
+- **Contract changes:** (a) `index.json` summaries gain `dimensions` (feature 3);
+  (b) new `public/data/legalese.json` (feature 5). Features 1, 2, 4 are
+  frontend-only.
+- **Suggested order:** 14.0 shared meta → 14.1 homepage (cheap, high-visibility)
+  → 14.4 suggestions (cheap, frontend-only) → 14.2 dimension explorer → 14.3
+  ranking (pipeline + page) → 14.5 Legalese-o-Meter (pipeline + page + chosen
+  graphic). Run `bun run build` after each as the correctness gate.

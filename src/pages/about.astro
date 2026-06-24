@@ -1,5 +1,8 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import { loadIndex } from "../lib/data";
+
+const { corpus, jurisdictions } = loadIndex();
 ---
 
 <Layout
@@ -17,6 +20,20 @@ import Layout from "../layouts/Layout.astro";
         county ordinances that shape everyday life. It is built on
         <strong class="text-ink-900">LOCUS-v1</strong>, an open corpus of U.S.
         local law released by researchers at UC Berkeley.
+      </p>
+      <p>
+        Local ordinances are the most fragmented body of law in the United
+        States. There is no central index, and every town's code is published
+        in its own place and format, which makes them nearly impossible to
+        compare. LOCUS gathered them into one uniform table:
+        <strong class="text-ink-900"
+          >{corpus.total_laws.toLocaleString()}</strong
+        > provisions from <strong class="text-ink-900"
+          >{corpus.cities.toLocaleString()}</strong
+        > cities and <strong class="text-ink-900">{corpus.counties}</strong>
+        counties across all <strong class="text-ink-900">{corpus.states}</strong>
+        states, each labeled by topic and scored on several model dimensions.
+        This pilot renders detailed pages for {jurisdictions.length} of them.
       </p>
 
       <h2 class="font-display text-[22px] font-semibold text-ink-900 pt-2">

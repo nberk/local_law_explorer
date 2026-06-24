@@ -38,7 +38,12 @@ export default function JurisdictionModules({ jurisId }: { jurisId: string }) {
 
   return (
     <>
-      <PlacePortrait portrait={data.portrait} name={data.name} />
+      <PlacePortrait
+        portrait={data.portrait}
+        name={data.name}
+        stateName={data.stateName}
+        laws={data.laws}
+      />
       <CommonQuestions
         questions={data.questions}
         laws={data.laws}

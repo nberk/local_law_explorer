@@ -41,3 +41,25 @@ export interface BaselinesFile {
 export function loadBaselines(): BaselinesFile {
   return JSON.parse(fs.readFileSync(path.join(DATA_DIR, "baselines.json"), "utf-8"));
 }
+
+// The most opaque laws across the pilots, for the Legalese-o-Meter page.
+export interface LegaleseLaw {
+  jurisId: string;
+  jurisName: string;
+  state: string;
+  slug: string;
+  title: string;
+  section: string | null;
+  topic: string;
+  opacity: number;
+  content: string;
+}
+
+export interface LegaleseFile {
+  generated: string;
+  laws: LegaleseLaw[];
+}
+
+export function loadLegalese(): LegaleseFile {
+  return JSON.parse(fs.readFileSync(path.join(DATA_DIR, "legalese.json"), "utf-8"));
+}

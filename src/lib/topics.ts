@@ -90,6 +90,54 @@ export interface Portrait {
   topicMix: PortraitTopic[];
 }
 
+// The three verified score dimensions, with the labels every comparative view
+// (Portrait explorer, city ranking, Legalese-o-Meter) shares so wording and
+// direction never drift. problem_salience is intentionally absent: its meaning
+// is unverified against the paper (the `verifyCopy` guardrail), so it is never
+// ranked, sorted, or shown. `inverted` dimensions read better flipped (a high
+// opacity z-score means dense writing, which we surface as low "plainness").
+export type DimensionKey = "opacity" | "paternalism" | "enforcement_discretion";
+
+export interface DimensionMeta {
+  key: DimensionKey;
+  label: string; // axis name
+  rankLabel: string; // toggle/column label on the ranking page (percentile framing)
+  inverted: boolean; // ranking shows displayPercentile (100 - percentile)
+  mostLabel: string; // the high-raw-score end of the explorer rail
+  leastLabel: string; // the low-raw-score end
+  note: string; // one-line "what this estimates" caveat
+}
+
+export const DIMENSION_META: DimensionMeta[] = [
+  {
+    key: "opacity",
+    label: "Writing density",
+    rankLabel: "Plainness",
+    inverted: true,
+    mostLabel: "Most densely worded",
+    leastLabel: "Plainest",
+    note: "How densely a law is written. Machine estimate.",
+  },
+  {
+    key: "paternalism",
+    label: "Personal-conduct rules",
+    rankLabel: "Conduct regulated",
+    inverted: false,
+    mostLabel: "Most restrictive of personal conduct",
+    leastLabel: "Least restrictive of personal conduct",
+    note: "How much a law regulates personal behavior. Machine estimate.",
+  },
+  {
+    key: "enforcement_discretion",
+    label: "Enforcement discretion",
+    rankLabel: "Left to officials",
+    inverted: false,
+    mostLabel: "Most left to officials' judgment",
+    leastLabel: "Most spelled out",
+    note: "How much enforcement is left to officials' judgment. Machine estimate.",
+  },
+];
+
 export interface QuestionMatch {
   id: string; // matches a QUESTIONS_META id
   matches: string[]; // law ids, resolved against Jurisdiction.laws
@@ -122,6 +170,9 @@ export interface JurisdictionSummary {
   medianOpacity: number | null;
   size: "large" | "small";
   portraitTeaser?: { headline: string; lowConfidence: boolean };
+  // National percentile per visible dimension, for the city-ranking page.
+  // Mirrors portrait.dimensions[].percentile; problem_salience omitted.
+  dimensions?: Partial<Record<DimensionKey, { percentile: number; displayPercentile?: number }>>;
 }
 
 // Display metadata for the common-questions lens. Keep ids in sync with the
@@ -139,6 +190,24 @@ export const QUESTIONS_META: { id: string; label: string; question: string }[] =
   { id: "sidewalk_snow", label: "Snow & sidewalks", question: "Must I clear snow from my sidewalk?" },
   { id: "signs", label: "Signs", question: "What are the rules for signs and banners?" },
   { id: "home_business", label: "Home business", question: "Can I run a business from home?" },
+];
+
+// Starter search chips for the browse tail. Each is a common everyday subject.
+// LawBrowser shows a chip only if that term actually matches a law in the
+// current town, so a suggestion never leads to an empty result set.
+export const BROWSE_SUGGESTIONS: { label: string; term: string }[] = [
+  { label: "Chickens", term: "chicken" },
+  { label: "Noise", term: "noise" },
+  { label: "Parking", term: "parking" },
+  { label: "Fences", term: "fence" },
+  { label: "Dogs", term: "dog" },
+  { label: "Fireworks", term: "fireworks" },
+  { label: "Trees", term: "tree" },
+  { label: "Trash", term: "trash" },
+  { label: "Signs", term: "sign" },
+  { label: "Permits", term: "permit" },
+  { label: "Snow", term: "snow" },
+  { label: "Short-term rentals", term: "rental" },
 ];
 
 export const NOTABLE_REASON_LABEL: Record<string, string> = {
