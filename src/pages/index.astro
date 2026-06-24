@@ -1,6 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import JurisdictionPicker from "../components/JurisdictionPicker.tsx";
+import FindMyTown from "../components/FindMyTown.tsx";
 import SpectrumExplorer from "../components/SpectrumExplorer.tsx";
 import { loadIndex, loadSpectrum } from "../lib/data";
 
@@ -45,6 +46,22 @@ const stats = [
         >how this site is built</a
       >.
     </p>
+
+    <form action="/search" method="get" class="mt-6 relative max-w-xl">
+      <input
+        type="text"
+        name="q"
+        placeholder="Ask about a local law… e.g. “can I keep chickens?”"
+        autocomplete="off"
+        class="w-full rounded-lg border border-ink-200 bg-white px-4 py-3 pr-24 text-[15px] placeholder:text-ink-400 focus:border-accent-500 focus:outline-none"
+      />
+      <button
+        type="submit"
+        class="absolute right-1.5 top-1.5 rounded-md bg-ink-900 px-4 py-1.5 text-[14px] font-medium text-white transition hover:bg-ink-700"
+      >
+        Search
+      </button>
+    </form>
   </section>
 
   <!-- interactive spectra -->
@@ -89,6 +106,9 @@ const stats = [
       to browse.
     </p>
     <div class="mt-6">
+      <FindMyTown client:load jurisdictions={jurisdictions} />
+    </div>
+    <div class="mt-10">
       <JurisdictionPicker client:load jurisdictions={jurisdictions} />
     </div>
   </section>

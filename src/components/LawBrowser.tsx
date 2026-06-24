@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   LENSES,
   TOPICS,
@@ -38,6 +38,8 @@ export default function LawBrowser({
   const [q, setQ] = useState("");
   const [topic, setTopic] = useState<string>("All");
   const [limit, setLimit] = useState(PAGE);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (preloaded) return;
@@ -56,6 +58,26 @@ export default function LawBrowser({
 
   // reset paging when filters change
   useEffect(() => setLimit(PAGE), [lens, q, topic]);
+
+  // Deep link from global search: /<jurisId>?law=<id>. Surface that law by
+  // pre-filling the browse search with its title (the existing title-prefix
+  // ranking floats it to the top), highlight it, and scroll the browse in view.
+  const didDeepLink = useRef(false);
+  useEffect(() => {
+    if (didDeepLink.current || !data) return;
+    didDeepLink.current = true;
+    const lawId = new URLSearchParams(window.location.search).get("law");
+    if (!lawId) return;
+    const law = data.laws.find((l) => l.id === lawId);
+    if (!law) return;
+    setLens("everyday");
+    setTopic("All");
+    setQ(law.title);
+    setHighlightId(lawId);
+    requestAnimationFrame(() =>
+      rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
+  }, [data]);
 
   const lensCounts = useMemo(() => {
     const c: Record<string, number> = { everyday: 0, business: 0, renting: 0 };
@@ -124,7 +146,7 @@ export default function LawBrowser({
   const activeLens = LENSES.find((l) => l.id === lens)!;
 
   return (
-    <div>
+    <div ref={rootRef}>
       {/* lens tabs */}
       <div className="flex flex-wrap gap-1 border-b border-[var(--rule)]">
         {LENSES.map((l) => (
@@ -205,6 +227,7 @@ export default function LawBrowser({
             law={l}
             jurisName={data.name}
             stateName={data.stateName}
+            highlight={l.id === highlightId}
           />
         ))}
       </div>

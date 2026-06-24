@@ -11,19 +11,29 @@ export default function LawCard({
   jurisName,
   stateName,
   tag,
+  highlight = false,
 }: {
   law: Law;
   jurisName: string;
   stateName: string;
   tag?: string; // optional category chip (e.g. the Notable Rules reason)
+  highlight?: boolean; // emphasize when arrived at via a deep link from search
 }) {
-  const [open, setOpen] = useState(false);
+  // Deep-linked laws open expanded so the visitor lands on the full text.
+  const [open, setOpen] = useState(highlight);
   const long = law.content.length > SNIPPET;
   const text = open || !long ? law.content : law.content.slice(0, SNIPPET) + "…";
   const opaque = law.scores.opacity !== null && law.scores.opacity >= OPACITY_FLAG;
 
   return (
-    <div className="rounded-lg border border-[var(--rule)] bg-white p-4">
+    <div
+      className={
+        "rounded-lg border bg-white p-4 " +
+        (highlight
+          ? "border-accent-500 ring-2 ring-accent-200"
+          : "border-[var(--rule)]")
+      }
+    >
       <div className="flex flex-wrap items-center gap-2">
         <span
           className={

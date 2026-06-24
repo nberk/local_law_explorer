@@ -26,6 +26,8 @@ bun run dev                 # dev server at http://localhost:4321 (binds 0.0.0.0
 bun run build               # static output → dist/
 bun run preview             # serve the built dist/
 bun run data:build          # regenerate public/data/ from LOCUS (see pipeline below)
+bun run data:search         # rebuild the global semantic-search index (needs: pip install fastembed)
+bun run data:geo            # rebuild the ZIP→coords table for "Find my town" (needs: pip install certifi)
 ```
 
 There is no test suite, linter, or typecheck script. `bun run build` (Astro's
@@ -105,6 +107,38 @@ and deploys without running the pipeline; CI never runs it. Re-run
 `python3` + `duckdb` (`pip install duckdb`) and network (the baseline pass scans
 the whole corpus, ~seconds).
 
+### Global semantic search ("Ask the law", `/search`)
+
+A site-wide plain-language search that returns the **real ordinances most related
+to a question, ranked by meaning, across all pilots** — never an AI-written
+answer (the only model touch is embedding the *query*, so the "original text only
+/ no LLM summaries" guardrail holds). See `docs/global-semantic-search.md` for the
+full design and the locked decisions.
+
+- **Offline** (`pipeline/build_search.py`, `fastembed` bge-small-en-v1.5) embeds
+  every law and emits `public/data/search/{vectors.bin, meta.json, manifest.json}`
+  — int8 vectors (44k×384, ~17 MB) + index-aligned metadata rows. Committed like
+  the rest of `public/data/`.
+- **Runtime**: `functions/api/search.ts` (a Cloudflare Pages Function) embeds the
+  user's query via Workers AI (same model). `GlobalSearch.tsx` downloads the
+  vectors once (lazy, on first search), ranks them in a **Web Worker**
+  (`searchWorker.ts`) by cosine, and renders results that deep-link to
+  `/<jurisId>?law=<id>` (handled in `LawBrowser`). An instant **lexical** layer
+  (`src/lib/search.ts` + `SEARCH_SYNONYMS`) shows results immediately and is the
+  fallback if the function is down. Vector-space match between fastembed and
+  Workers AI must be validated (see the doc's "validate" gate).
+
+### Find my town (homepage geolocation)
+
+`FindMyTown.tsx` learns the user's rough location three ways (zero-click IP geo via
+`functions/api/where.ts` → precise browser Geolocation on click → manual ZIP/city)
+and shows the **nearest pilot with the honest distance + a "we don't cover your
+town yet" caveat** when it's far. Nearest-of-19 math + the hand-maintained coord
+table live in `src/lib/geo.ts` (LOCUS has no coordinates — a deliberate exception
+to "data comes from the pipeline"). ZIP→coords uses `public/data/geo/zip-centroids.json`
+(built by `pipeline/build_geo.py` from GeoNames), lazy-loaded only on ZIP entry.
+Precise coords never leave the browser.
+
 ## Domain model (shared types + constants in `src/lib/topics.ts`)
 
 - **Topics** (`Zoning`, `Nuisance`, `Buildings`, `Business`, `Other`) are model
@@ -167,6 +201,14 @@ also flags `limitedCoverage` when `Other`-share ≥ 0.65).
   **required** because Cloudflare doesn't auto-detect the text `bun.lock` (only
   the legacy binary `bun.lockb`) and otherwise falls back to npm.
 - Deploys are Git-driven; there is no manual `wrangler pages deploy` step.
+- **Pages Functions** live in `functions/` (repo root) and deploy automatically
+  alongside the static `dist/` — no build-config change. `functions/api/search.ts`
+  needs a **Workers AI binding named `AI`** on the Pages project (dashboard →
+  Settings → Functions → bindings); without it, search degrades to the lexical
+  fallback. `functions/api/where.ts` (IP geo) needs no binding. `astro dev` does
+  **not** run Functions — use `bunx wrangler pages dev dist` (with CF login) to
+  test the semantic/IP-geo paths locally; the lexical + browser-geo + ZIP paths
+  work under plain `astro dev`.
 
 ## Constraints to preserve
 
@@ -180,15 +222,18 @@ also flags `limitedCoverage` when `Other`-share ≥ 0.65).
   estimates and phrased as percentiles ("plainer than 70% of towns"), never
   verdicts; `problem_salience` stays out of visible copy until verified; questions
   surface "rules that mention this," not yes/no answers; notable rules state they
-  match words, not meaning.
+  match words, not meaning; **global search returns "ordinances most related to
+  your question," ranked by meaning — never a written answer** (the only model
+  call embeds the query, not the law text).
 - **Plain-language translations: allowed, but always labeled and secondary.** The
   old "original text only" guardrail (plan doc D1) was **lifted (2026-06-23)** at
   the user's direction. We may publish plain-language translations of laws, but:
   they appear *alongside* the verbatim text (never replacing it), are labeled "AI
   paraphrase, not the law — verify before relying on it," and live only in
   `public/data/spectrum.json`. They are **hand-authored and committed**, never
-  generated at build time (the pipeline still makes no model calls). Portrait,
-  questions, and notable remain text-only heuristics with no model calls.
+  generated at build time. Portrait, questions, notable, and global search make no
+  model calls at build time; global search's one runtime model call embeds the
+  *query* only (Workers AI), never the law text.
 
 ## Deeper context
 
