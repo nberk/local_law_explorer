@@ -1,0 +1,83 @@
+---
+// What a town's code is *about*, made comparative. Each topic is a bar (this
+// town's share of its code) with a tick marking the typical U.S. town's share
+// for that topic — so "heavy on zoning, light on nuisance" is visible at a
+// glance instead of buried in percentile prose. Server-rendered (no JS).
+import { TOPICS, TOPIC_COLOR } from "../lib/topics";
+
+interface Props {
+  counts: Record<string, number>;
+  medians: Record<string, number>; // national median share per topic
+}
+const { counts, medians } = Astro.props;
+const total = counts.total || 1;
+
+const rows = TOPICS.map((t) => {
+  const share = (counts[t] || 0) / total;
+  const median = medians[t] ?? 0;
+  // relative weight vs. a typical town, for the plain-language cue
+  const ratio = median > 0 ? share / median : 1;
+  return { topic: t, n: counts[t] || 0, share, median, ratio };
+})
+  .filter((r) => r.n > 0)
+  .sort((a, b) => b.share - a.share);
+
+// Shared x-scale so bar lengths are comparable across topics.
+const scale = Math.max(0.0001, ...rows.flatMap((r) => [r.share, r.median]));
+const w = (v: number) => `${Math.min(100, (v / scale) * 100)}%`;
+const pct = (v: number) => `${Math.round(v * 100)}%`;
+
+function cue(ratio: number): string {
+  if (ratio >= 1.4) return "more than typical";
+  if (ratio <= 0.7) return "less than typical";
+  return "about typical";
+}
+---
+
+<div>
+  <div class="flex flex-wrap items-baseline justify-between gap-2">
+    <p class="font-mono text-[11px] uppercase tracking-wider text-ink-500">
+      What the code is about
+    </p>
+    <p class="text-[11px] text-ink-400">
+      bar = share of this town’s code · <span class="text-ink-500">│</span> = typical
+      U.S. town
+    </p>
+  </div>
+
+  <div class="mt-3 space-y-2">
+    {
+      rows.map((r) => (
+        <div class="grid grid-cols-[88px_1fr] items-center gap-3 sm:grid-cols-[110px_1fr]">
+          <div class="flex items-center gap-1.5 text-[12.5px] text-ink-700">
+            <span
+              class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
+              style={`background:${TOPIC_COLOR[r.topic]}`}
+            />
+            <span class="truncate">{r.topic}</span>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <div class="relative h-3.5 flex-1 rounded bg-ink-50">
+              {/* this town's share */}
+              <div
+                class="absolute left-0 top-0 h-3.5 rounded"
+                style={`width:${w(r.share)};background:${TOPIC_COLOR[r.topic]}`}
+              />
+              {/* typical-town reference tick */}
+              <div
+                class="absolute top-1/2 h-5 w-px -translate-x-1/2 -translate-y-1/2 bg-ink-900/55"
+                style={`left:${w(r.median)}`}
+                title={`Typical U.S. town: ${pct(r.median)}`}
+              />
+            </div>
+            <div class="w-[116px] shrink-0 text-right text-[11.5px]">
+              <span class="font-mono text-ink-800">{pct(r.share)}</span>
+              <span class="ml-1 text-ink-400">{cue(r.ratio)}</span>
+            </div>
+          </div>
+        </div>
+      ))
+    }
+  </div>
+</div>

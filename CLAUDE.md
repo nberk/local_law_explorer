@@ -6,13 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Local Law Lookup — a free, non-commercial static site that turns the open
 **LOCUS-v1** local-ordinance corpus into plain, readable city/county law for
-ordinary people. Live at https://locallaw.pages.dev. Each jurisdiction page opens
-with a synthesized **Place Portrait** (how this town governs vs. the rest of the
-US), then everyday "Can I…?" questions, then notable rules, and only then a full
-searchable browse ("dig deeper"). Two site-level views round it out: `/rankings`
-(pilots on the national scale) and `/legalese` (a playful opacity meter). Pilot
-covers **19 jurisdictions**. Not legal advice; the text is OCR'd and every
-label/score is a machine estimate.
+ordinary people. Live at https://locallaw.pages.dev. The **homepage** leads with
+two interactive **spectrum explorers** (`SpectrumExplorer`: opacity and
+paternalism) that sample ~20 real laws across a score dimension and pair the
+verbatim text with a hand-authored plain-language translation; the city picker
+sits below them. Each jurisdiction page opens with a synthesized **Place
+Portrait** (how this town governs vs. the rest of the US), then everyday "Can
+I…?" questions, then notable rules, and only then a full searchable browse ("dig
+deeper"). Two site-level views round it out: `/rankings` (pilots on the national
+scale) and `/legalese` (a playful opacity meter). Pilot covers **19
+jurisdictions**. Not legal advice; the text is OCR'd, every label/score is a
+machine estimate, and plain-language translations are AI paraphrases, not the law.
 
 ## Commands
 
@@ -57,10 +61,18 @@ they meet only at JSON files in `public/data/`.
    - **Legalese gallery** (`build_legalese`): collects the most opaque laws across
      all pilots (capped per jurisdiction), emits `public/data/legalese.json` for
      the Legalese-o-Meter page.
+   - **Homepage spectra** (`build_spectrum`, in the dependency-free
+     `pipeline/spectrum.py` so the selection rule is shared, not duplicated):
+     picks ~20 legible laws evenly spaced across each of opacity/paternalism, one
+     per jurisdiction where possible, and emits `public/data/spectrum.json`. The
+     `plain` (plain-language translation) field is **hand-authored** and lives
+     only in that committed file; `build_spectrum` reads the prior file and
+     carries translations forward (keyed by `jurisId|section|title`) so a rebuild
+     never clobbers them — only newly-selected laws come back with `plain: null`.
 
 2. **Static site** (Astro 6 + React islands + Tailwind v4) — at build time
    `src/lib/data.ts` reads the JSON (`loadIndex`, `loadJurisdiction`,
-   `loadBaselines`, `loadLegalese`) and `src/pages/[state]/[city].astro`
+   `loadBaselines`, `loadLegalese`, `loadSpectrum`) and `src/pages/[state]/[city].astro`
    statically generates one page per jurisdiction via `getStaticPaths`. In the
    browser, a **single** `JurisdictionModules` island `fetch`es that
    jurisdiction's file **once** and shares the parsed document across
@@ -68,17 +80,24 @@ they meet only at JSON files in `public/data/`.
    tail (avoiding a 4× refetch of a multi-MB file). All heavy work is at build
    time; the browser downloads JSON and filters/renders.
 
-   Three site-level surfaces sit on top of the per-jurisdiction pages: the
-   homepage opens with a "what this is" explainer + corpus scale + dataset link;
-   `/rankings` (`RankingsTable`) places the pilots on the national distribution
-   per dimension (national-percentile framing, never a leaderboard verdict); and
-   `/legalese` (`LegaleseMeter`) is a playful gauge over `legalese.json`. Inside a
-   place page, each Place Portrait dimension bar expands into `DimensionLaws` —
-   the town's own laws ranked by that raw z-score. `LawBrowser` shows place-aware
-   starter chips (`BROWSE_SUGGESTIONS`, filtered to terms that actually match
-   locally). Shared dimension labels/direction live in `DIMENSION_META`
-   (`topics.ts`); readability math for the meter lives in `src/lib/readability.ts`
-   (deterministic facts, not model output — keeps the "original text only" rule).
+   Site-level surfaces sit on top of the per-jurisdiction pages: the **homepage**
+   leads with two `SpectrumExplorer` islands over `spectrum.json` (a draggable
+   tick-marked rail per dimension, plain-language ⇄ original toggle; opacity also
+   shows readability facts + a "squint" blur), then the city picker, then a
+   compact dataset explainer; `/rankings` (`RankingsTable`) places the pilots on
+   the national distribution per dimension (national-percentile framing, never a
+   leaderboard verdict); and `/legalese` (`LegaleseMeter`) is a playful gauge over
+   `legalese.json`. Inside a place page, the topic mix renders as
+   `TopicFingerprint` (`.astro`, server-rendered: per-topic bars vs. the national
+   median share, the fix for the old confusing "more laws of X" copy), and each
+   Place Portrait dimension bar expands into `DimensionLaws` — the town's own laws
+   ranked by that raw z-score. `NationalPositionBar` (shared by the portrait and
+   rankings) shows a place's 0–100 position with a "typical town" (50th) mark.
+   `LawBrowser` shows place-aware starter chips (`BROWSE_SUGGESTIONS`, filtered to
+   terms that actually match locally). Shared dimension labels/direction live in
+   `DIMENSION_META` (`topics.ts`); readability math lives in
+   `src/lib/readability.ts` (deterministic facts counted from the text, not model
+   output).
 
 `public/data/` is **committed** (~92 MB; largest file ~15 MB) so the site builds
 and deploys without running the pipeline; CI never runs it. Re-run
@@ -162,9 +181,14 @@ also flags `limitedCoverage` when `Other`-share ≥ 0.65).
   verdicts; `problem_salience` stays out of visible copy until verified; questions
   surface "rules that mention this," not yes/no answers; notable rules state they
   match words, not meaning.
-- **Original ordinance text only** — no LLM summaries/rewrites of legal text (a
-  deliberate product decision; plan doc D1). Portrait/questions/notable are all
-  text-only heuristics — no model calls at build time.
+- **Plain-language translations: allowed, but always labeled and secondary.** The
+  old "original text only" guardrail (plan doc D1) was **lifted (2026-06-23)** at
+  the user's direction. We may publish plain-language translations of laws, but:
+  they appear *alongside* the verbatim text (never replacing it), are labeled "AI
+  paraphrase, not the law — verify before relying on it," and live only in
+  `public/data/spectrum.json`. They are **hand-authored and committed**, never
+  generated at build time (the pipeline still makes no model calls). Portrait,
+  questions, and notable remain text-only heuristics with no model calls.
 
 ## Deeper context
 
@@ -172,3 +196,6 @@ also flags `limitedCoverage` when `Other`-share ≥ 0.65).
 list" reframe (top of the doc), the original product plan, the UX testing pass
 (§12), and planned/not-yet-built upgrades — build-time relevance `rank` (§13), an
 LLM pass for Notable Rules, and verifying `problem_salience` against the paper.
+`docs/homepage-redesign.md` records the 2026-06-23 pass: the spectrum-explorer
+homepage, the D1 plain-language reversal, and the `TopicFingerprint` /
+`NationalPositionBar` data-viz upgrades.

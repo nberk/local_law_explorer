@@ -1,18 +1,7 @@
 import { useState } from "react";
 import { DIMENSION_META, type Law, type Portrait } from "../lib/topics";
 import DimensionLaws from "./DimensionLaws";
-
-// A thin 0-100 track with a marker showing where this town sits nationally.
-function PercentileBar({ pct }: { pct: number }) {
-  return (
-    <div className="relative h-1 w-full rounded-full bg-ink-100">
-      <div
-        className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent-500"
-        style={{ left: `${Math.min(98, Math.max(2, pct))}%` }}
-      />
-    </div>
-  );
-}
+import NationalPositionBar from "./NationalPositionBar";
 
 // Module 1 — how this town's laws compare to the rest of the country, derived
 // from the four LOCUS model dimensions and its topic mix. Every statement is a
@@ -88,11 +77,11 @@ export default function PlacePortrait({
             {topicRows.map((r) => (
               <li
                 key={r.key}
-                className="grid grid-cols-1 gap-1.5 sm:grid-cols-[1fr_120px] sm:items-center sm:gap-4"
+                className="grid grid-cols-1 gap-1.5 sm:grid-cols-[1fr_150px] sm:items-center sm:gap-4"
               >
                 <span className="text-[14px] leading-snug text-ink-800">{r.sentence}</span>
                 <span className="hidden sm:block">
-                  <PercentileBar pct={r.pct} />
+                  <NationalPositionBar pct={r.pct} />
                 </span>
               </li>
             ))}
@@ -106,12 +95,12 @@ export default function PlacePortrait({
                     aria-expanded={open}
                     className="w-full px-3 py-2.5 text-left transition hover:bg-ink-50/60"
                   >
-                    <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-[1fr_120px] sm:items-center sm:gap-4">
+                    <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-[1fr_150px] sm:items-center sm:gap-4">
                       <span className="text-[14px] leading-snug text-ink-800">
                         {r.sentence}
                       </span>
                       <span className="hidden sm:block">
-                        <PercentileBar pct={r.pct} />
+                        <NationalPositionBar pct={r.pct} />
                       </span>
                     </div>
                     <span className="mt-1 inline-block text-[11.5px] text-accent-600">

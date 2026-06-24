@@ -4,6 +4,7 @@ import {
   type DimensionKey,
   type JurisdictionSummary,
 } from "../lib/topics";
+import NationalPositionBar from "./NationalPositionBar";
 
 // English ordinal suffix for a whole number (1st, 2nd, 3rd, 11th…). The 11–13
 // exception takes "th" despite ending in 1/2/3, so check the last two digits first.
@@ -75,7 +76,8 @@ export default function RankingsTable({
 
       <p className="mt-3 text-[12.5px] leading-relaxed text-ink-500">
         Sorted by <span className="text-ink-700">{meta.rankLabel.toLowerCase()}</span>.
-        Higher = more than the typical US town. {meta.note}
+        Higher = more than the typical US town; the <span className="text-ink-600">│</span>{" "}
+        mark is that typical (50th-percentile) town. {meta.note}
       </p>
 
       <ol className="mt-4 space-y-0.5">
@@ -97,12 +99,7 @@ export default function RankingsTable({
                   </span>
                 </span>
                 <span className="hidden flex-1 sm:block">
-                  <div className="relative h-1.5 w-full rounded-full bg-ink-100">
-                    <div
-                      className="absolute left-0 top-0 h-1.5 rounded-full bg-accent-500"
-                      style={{ width: `${Math.min(100, Math.max(2, r.v))}%` }}
-                    />
-                  </div>
+                  <NationalPositionBar pct={r.v} showValue={false} />
                 </span>
                 <span className="w-16 shrink-0 text-right font-mono text-[12px] text-ink-500">
                   {r.v}

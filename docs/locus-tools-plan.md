@@ -384,9 +384,13 @@ tracking, coverage is partial, and users must verify against the official code.
 
 All resolved (2026-06-23):
 
-- **D1 Summarization scope:** RESOLVED. Original text only for v1 (no LLM at
-  build time). Present cleaned ordinance text with readable titles + topic badges.
-  Summaries are a later enhancement.
+- **D1 Summarization scope:** RESOLVED, then REVISED (2026-06-23). v1 shipped
+  original text only. The "no plain-language rewrites" guardrail was **lifted** at
+  the user's direction: the homepage spectrum explorers now show hand-authored
+  plain-language translations *alongside* the verbatim text, labeled "AI
+  paraphrase, not the law." Translations are committed in
+  `public/data/spectrum.json` (see `docs/homepage-redesign.md`); the build
+  pipeline still makes no model calls. Portrait/questions/notable stay text-only.
 - **D3 Hosting target:** RESOLVED. Cloudflare Pages (mirrors legalbenchmarks).
 - **D4 Official-source links:** RESOLVED. Best-effort search link: build a
   search-engine query from jurisdiction name + section number + "municipal code".

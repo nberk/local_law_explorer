@@ -19,16 +19,21 @@ Two halves with a flat-file contract between them:
    parquet over HuggingFace's `hf://` protocol. It first computes national
    baselines from the whole corpus, then for each pilot jurisdiction keeps the
    substantive laws, cleans headers, tags lenses, and synthesizes a comparative
-   **Place Portrait**, everyday-question matches, and notable rules — writing it
-   all as static JSON into `public/data/` (text-only heuristics, no LLM).
+   **Place Portrait**, everyday-question matches, notable rules, and the homepage
+   **spectrum** samples — writing it all as static JSON into `public/data/`. The
+   pipeline makes no model calls; the plain-language translations shown on the
+   homepage are hand-authored and committed in `public/data/spectrum.json`.
 2. **Static site** (Astro + React islands + Tailwind v4): one statically generated
    page per jurisdiction. A single client island fetches that jurisdiction's JSON
    once and renders the portrait, common questions, notable rules, and a
    searchable full browse from it.
 
-Each jurisdiction page opens with the portrait (how the place governs vs. the rest
-of the US), answers everyday "Can I…?" questions, surfaces distinctive rules, and
-ends with the full searchable browse.
+The homepage leads with two interactive **spectrum explorers** — drag a handle
+from plain English to dense legalese, or from hands-off to conduct-regulating, and
+read a real law at each stop with a plain-language version beside the original.
+Below them is the city picker. Each jurisdiction page opens with the portrait (how
+the place governs vs. the rest of the US), answers everyday "Can I…?" questions,
+surfaces distinctive rules, and ends with the full searchable browse.
 
 See [docs/locus-tools-plan.md](./docs/locus-tools-plan.md) for the full plan.
 

@@ -1,8 +1,8 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import JurisdictionModules from "../../components/JurisdictionModules.tsx";
-import { loadIndex } from "../../lib/data";
-import { TOPICS, TOPIC_COLOR } from "../../lib/topics";
+import TopicFingerprint from "../../components/TopicFingerprint.astro";
+import { loadIndex, loadBaselines } from "../../lib/data";
 
 export function getStaticPaths() {
   const { jurisdictions } = loadIndex();
@@ -13,12 +13,10 @@ export function getStaticPaths() {
 }
 
 const { j } = Astro.props;
-const total = j.counts.total || 1;
-const topicRows = TOPICS.map((t) => ({
-  topic: t,
-  n: j.counts[t] || 0,
-  pct: Math.round(((j.counts[t] || 0) / total) * 100),
-})).filter((r) => r.n > 0);
+const baselines = loadBaselines();
+const medians = Object.fromEntries(
+  Object.entries(baselines.topicShares).map(([t, v]) => [t, v.breakpoints[50] ?? 0]),
+);
 ---
 
 <Layout
@@ -47,32 +45,9 @@ const topicRows = TOPICS.map((t) => ({
       </div>
     </div>
 
-    <!-- topic composition -->
-    <div class="mt-5">
-      <div class="flex h-2 w-full overflow-hidden rounded-full bg-ink-100">
-        {
-          topicRows.map((r) => (
-            <div
-              style={`width:${r.pct}%;background:${TOPIC_COLOR[r.topic]}`}
-              title={`${r.topic}: ${r.n}`}
-            />
-          ))
-        }
-      </div>
-      <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-ink-500">
-        {
-          topicRows.map((r) => (
-            <span class="inline-flex items-center gap-1.5">
-              <span
-                class="inline-block h-2 w-2 rounded-sm"
-                style={`background:${TOPIC_COLOR[r.topic]}`}
-              />
-              {r.topic}
-              <span class="font-mono text-ink-400">{r.n}</span>
-            </span>
-          ))
-        }
-      </div>
+    <!-- topic composition vs. the typical US town -->
+    <div class="mt-6">
+      <TopicFingerprint counts={j.counts} medians={medians} />
     </div>
 
     <!-- disclaimer banner -->

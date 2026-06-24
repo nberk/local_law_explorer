@@ -33,6 +33,8 @@ from pathlib import Path
 
 import duckdb
 
+import spectrum  # local module (pipeline/ is on sys.path when run as a script)
+
 # --- Pilot jurisdictions (state, city-slug) ---------------------------------
 # Largest covered cities, geographically spread.
 LARGE_CITIES = [
@@ -637,6 +639,7 @@ def main():
 
     manifest = []
     legalese_pool = []
+    spectrum_pool = []
     for (state, city), laws in sorted(by_juris.items()):
         slug = city
         name = display_name(city)
@@ -672,6 +675,7 @@ def main():
         median_op = opacities[len(opacities) // 2] if opacities else None
 
         for law in out_laws:
+            spectrum_pool.append(spectrum.flatten(state, slug, name, law))
             op = law["scores"]["opacity"]
             if op is None:
                 continue
@@ -729,6 +733,16 @@ def main():
     (out / "legalese.json").write_text(
         json.dumps({"generated": "2026-06-23", "laws": legalese}, ensure_ascii=False))
     print("Wrote %s (%d laws)" % (out / "legalese.json", len(legalese)))
+
+    # Homepage spectra. build_spectrum reads the existing spectrum.json (if any)
+    # and carries forward hand-authored plain-language translations, so a rebuild
+    # never clobbers them (only newly-selected laws come back with plain=null).
+    spectrum_doc = spectrum.build_spectrum(spectrum_pool, str(out / "spectrum.json"))
+    spectrum_doc = {"generated": "2026-06-23", **spectrum_doc}
+    (out / "spectrum.json").write_text(json.dumps(spectrum_doc, ensure_ascii=False))
+    n_spec = sum(len(s["laws"]) for s in spectrum_doc["spectra"].values())
+    n_plain = sum(1 for s in spectrum_doc["spectra"].values() for l in s["laws"] if l["plain"])
+    print("Wrote %s (%d laws, %d translated)" % (out / "spectrum.json", n_spec, n_plain))
 
 
 if __name__ == "__main__":
