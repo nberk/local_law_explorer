@@ -105,6 +105,27 @@ Logs match rate + unmatched list per type.
   point per county), matched on **county name + state** (`USPS` column; `NAME`
   like "Harris County" / "… Parish" / "… Borough" / "… Census Area"). Normalize by
   stripping the county/parish/borough/census-area suffix on both sides.
+- **Townships / towns / boroughs (minor civil divisions):** GeoNames'
+  populated-places layer doesn't carry these, so many MCDs (most MI/PA/NJ/NY
+  entries, all typed `city` in LOCUS) missed. Added the **US Census Gazetteer
+  county-subdivisions file** (`2023_Gaz_cousubs_national.zip`) as a third source.
+  Many LOCUS township names carry a **county hint** ("Bedford Township, (Monroe
+  Co.)", "Harrison, Calumet Co"); `split_county_hint()` peels it off and resolves
+  it to the county's 5-digit FIPS (from the counties Gazetteer `GEOID`) to pick the
+  right same-named township; otherwise the largest-land-area MCD of that name in
+  the state wins. Used as a fallback after the city/county matchers.
+- **Glued-suffix + accent handling:** `_tokens` now NFKD-folds accents
+  ("Española" → "espanola", matching GeoNames `asciiname`), and `deglue_suffix`
+  splits OCR-glued governance suffixes off a single token ("ogdencity" → ogden,
+  "whitepinecounty" → whitepine, "lexingtonfayetteco" → lexingtonfayette). County
+  and cousub indexes also carry **spaceless** key variants so deglued keys match.
+- **`_OVERRIDES` (verified names, not coordinates):** a handful of slugs LOCUS
+  garbled past repair (OCR truncation: `aurel`→Aurelia, `aust`→Austin,
+  `newcordell`→Cordell, `hempstead_bzo_town`→Town of Hempstead — "Bzo" = Building
+  Zone Ordinance; plus the comma-nested `baton_rouge_east_baton_rouge_parish`).
+  Each maps to a corrected name (+ optional county hint), re-fed to the same
+  matchers — coordinates still come from the source files, only the *name* is
+  fixed. Names verified from each town's own ordinance text.
 - **ZIP→county (exact):** re-read the GeoNames ZIP dump (already used by
   `build_geo.py`); it carries `admin2` (county name) per ZIP. Match ZIP's
   county+state to our covered county jurisdictions by normalized name, and rewrite
@@ -113,6 +134,11 @@ Logs match rate + unmatched list per type.
 
 Run order: `build.py` → `build_geo.py` (ZIP centroids) → `geocode_jurisdictions.py`
 (coords into `index.json` + ZIP→county augmentation). Wire as `bun run data:geocode`.
+
+**Coverage:** 2287/2287 jurisdictions geocoded (100%) — cities 1911/1911,
+counties 376/376. Every place now appears in "find my town". (The earlier ~45
+misses — MCDs, OCR-glued slugs, consolidated city-counties — were closed by the
+county-subdivisions source, glued-suffix/accent normalization, and `_OVERRIDES`.)
 
 ## 3. Upload to R2
 

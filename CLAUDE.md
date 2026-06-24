@@ -186,8 +186,15 @@ your town yet" caveat when far. `nearestByType()` in `src/lib/geo.ts` computes
 nearest-of-each over the `lat`/`lon` on every `JurisdictionSummary` (skipping
 null-coord entries). Coordinates are no longer hardcoded: `pipeline/geocode_jurisdictions.py`
 fills them in (cities → GeoNames populated places; counties → US Census Gazetteer
-internal points) — LOCUS has no coordinates, a deliberate exception to "data comes
-from the pipeline". ZIP→coords uses `public/data/geo/zip-centroids.json` (built by
+internal points; townships/towns/boroughs → US Census Gazetteer **county
+subdivisions**, disambiguated by the county hint LOCUS appends to township names,
+e.g. "Bedford Township, (Monroe Co.)") — LOCUS has no coordinates, a deliberate
+exception to "data comes from the pipeline". Accent-folding + glued-suffix degluing
+handle OCR-mangled slugs ("ogdencity"→Ogden, "Española"→Espanola); a small
+`_OVERRIDES` table supplies *verified names* (never raw coords) for the few slugs
+LOCUS garbled past repair ("aurel"→Aurelia, "hempstead bzo"→Town of Hempstead).
+Coverage is **100%** (2287/2287) — every place appears in "find my town".
+ZIP→coords uses `public/data/geo/zip-centroids.json` (built by
 `pipeline/build_geo.py` from GeoNames), entries now `[lat, lon, countyId?]` so a
 ZIP returns the **exact** containing county (added by `data:geocode`); device/IP
 geo still use nearest-centroid. Precise coords never leave the browser.
