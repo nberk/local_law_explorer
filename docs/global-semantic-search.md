@@ -1,5 +1,10 @@
 # Global Semantic Search ("Ask anything")
 
+> **DEPRECATED (2026-06-24).** This feature was removed — its index files were
+> never committed, so `/search` was a dead end. The product moved to in-town
+> search only (`LawBrowser`). See `docs/homepage-declutter-search.md`. This
+> document is kept only as the design record if "direction B" is ever revived.
+
 ## Context
 
 Today search is **per-jurisdiction and lexical**: `LawBrowser` does

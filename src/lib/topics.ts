@@ -215,45 +215,6 @@ export const BROWSE_SUGGESTIONS: { label: string; term: string }[] = [
   { label: "Short-term rentals", term: "rental" },
 ];
 
-// Evergreen plain-language prompts for the global "ask anything" search. Shown
-// as chips in the empty state and re-ordered after a search by the topics of the
-// top results. Phrased as real questions a resident would type.
-export const SUGGESTED_QUESTIONS: string[] = [
-  "Can I keep chickens in my backyard?",
-  "What are the quiet hours for noise?",
-  "Do I need a permit to build a fence?",
-  "Can I run a short-term rental?",
-  "My neighbor’s dog won’t stop barking",
-  "Where can I park an RV or boat?",
-  "Can I have a backyard fire pit?",
-  "Do I have to shovel snow from my sidewalk?",
-  "Rules for running a business from home",
-  "Can I hold a yard sale?",
-];
-
-// Synonym expansion for the instant lexical layer (shown while the semantic
-// query vector is in flight, and as the fallback when the embed function is
-// down). Maps a token the user might type to related ordinance vocabulary, so
-// "loud" still surfaces noise/decibel rules. Lower-cased; matched as substrings.
-export const SEARCH_SYNONYMS: Record<string, string[]> = {
-  chicken: ["chicken", "poultry", "hen", "rooster", "fowl", "livestock"],
-  bee: ["bee", "beekeep", "apiary", "hive"],
-  noise: ["noise", "loud", "sound", "decibel", "amplified", "disturb", "quiet"],
-  dog: ["dog", "pet", "leash", "bark", "kennel", "animal"],
-  fence: ["fence", "shed", "setback", "accessory structure", "retaining wall"],
-  rental: ["rental", "short-term", "vacation rental", "airbnb", "transient", "homestay"],
-  rv: ["recreational vehicle", "motor home", "camper", "trailer", "boat"],
-  fire: ["open burning", "bonfire", "fire pit", "recreational fire"],
-  snow: ["snow", "ice", "shovel", "sidewalk"],
-  weed: ["weed", "tall grass", "overgrown", "lawn"],
-  sign: ["sign", "billboard", "banner", "advertising"],
-  parking: ["parking", "park", "vehicle", "overnight"],
-  business: ["business", "license", "permit", "home occupation", "vendor"],
-  tree: ["tree", "shrub", "vegetation", "arborist"],
-  trash: ["trash", "garbage", "refuse", "waste", "litter"],
-  fireworks: ["fireworks", "pyrotechnic", "explosive"],
-};
-
 export const NOTABLE_REASON_LABEL: Record<string, string> = {
   animals: "Animals",
   recreation: "Recreation & events",
