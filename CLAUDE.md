@@ -9,11 +9,10 @@ Local Law Explorer — a free, non-commercial static site that turns the open
 ordinary people. Live at https://locallaw.pages.dev. The **homepage** leads with
 **"find your town"** (`FindMyTown`) as the hero — the core job-to-be-done is
 "what are the local laws where I live?" — the finder sits **at the top**
-(headline "Know your local laws." + a one-line framing + `FindMyTown`, with a
-"learn more ↓" link jumping past the fold), so the interactive action is
+(headline "Know your local laws." + `FindMyTown`), so the interactive action is
 above-the-fold and the prose is out of the way. Below it: the fuller **dataset
-explainer** at `#about` (the "learn more"
-target), then the **stats** grid ("the dataset, in numbers"), and last of all the
+explainer** at `#about`, then the **stats** grid ("the dataset, in numbers"), and
+last of all the
 **"not legal advice"** disclaimer box. Each jurisdiction page opens
 with a **prominent search box** (`TopSearch`, inside `JurisdictionModules`: a
 clearly-labeled "Search <place>'s laws" bar at the very top so it's obvious up
@@ -148,8 +147,7 @@ they meet only at JSON files in `public/data/`.
 
    Site-level surfaces sit on top of the per-jurisdiction pages: the **homepage**
    hero is `FindMyTown` (the primary "what are the laws where I live?" action,
-   above the fold under a one-line framing, with a "learn more ↓" link to
-   `#about`), then the `#about` dataset explainer,
+   above the fold), then the `#about` dataset explainer,
    then the **stats** grid, and the **disclaimer box last of all**. The `/map`
    page is still reached from the header's "Explore cities" link (the homepage
    "or explore" card row was removed 2026-06-25). The
@@ -328,8 +326,8 @@ The search-first picker no longer buckets on `size`; it orders by law count
   r2-cors.json` (wrangler OAuth, no token needed). A missing origin looks like
   "Could not load this jurisdiction's data" on *every* place (the per-jurisdiction
   fetch is CORS-blocked) while the HTML loads fine. Current origins: `locallaw.pages.dev`
-  + `*.locallaw.pages.dev` (preview deploys) + `locallaws.nick-berk.com` +
-  `locallaws.nickberkconsulting.com` + localhost. Bulk upload with
+  + `*.locallaw.pages.dev` (preview deploys) + `locallaw.nick-berk.com` +
+  `locallaw.nickberkconsulting.com` + localhost. Bulk upload with
   `aws s3 sync data-build/ s3://locallaw-data/data/ --endpoint-url
   https://<account>.r2.cloudflarestorage.com` (wrangler has no bulk sync). The R2
   S3 token is an **operator secret** — keep it in the macOS Keychain

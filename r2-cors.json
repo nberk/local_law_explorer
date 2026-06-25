@@ -5,8 +5,8 @@
         "origins": [
           "https://locallaw.pages.dev",
           "https://*.locallaw.pages.dev",
-          "https://locallaws.nick-berk.com",
-          "https://locallaws.nickberkconsulting.com",
+          "https://locallaw.nick-berk.com",
+          "https://locallaw.nickberkconsulting.com",
           "http://localhost:4321",
           "http://localhost:4331"
         ],
