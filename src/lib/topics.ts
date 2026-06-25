@@ -168,11 +168,6 @@ export interface QuestionMatch {
   matches: string[]; // law ids, resolved against Jurisdiction.laws
 }
 
-export interface NotableRef {
-  id: string; // law id
-  reason: string; // a NOTABLE_REASON_LABEL key
-}
-
 export interface Jurisdiction {
   id: string;
   name: string;
@@ -181,7 +176,8 @@ export interface Jurisdiction {
   type: string;
   portrait: Portrait;
   questions: QuestionMatch[];
-  notable: NotableRef[];
+  // NOTE: the pipeline still emits a `notable` array, but the "Notable rules"
+  // section was removed on 2026-06-25, so it's no longer modeled or read here.
   laws: Law[];
 }
 
@@ -236,16 +232,6 @@ export const BROWSE_SUGGESTIONS: { label: string; term: string }[] = [
   { label: "Snow", term: "snow" },
   { label: "Short-term rentals", term: "rental" },
 ];
-
-export const NOTABLE_REASON_LABEL: Record<string, string> = {
-  animals: "Animals",
-  recreation: "Recreation & events",
-  conduct: "Public conduct",
-  tech: "Drones & tech",
-  vice: "Vice & licensing",
-  vending: "Street vending",
-  property: "Property",
-};
 
 // Administrative/ceremonial boilerplate. Mirrors the _BOILERPLATE regex in
 // pipeline/build.py. In the client browse view we additionally treat topic

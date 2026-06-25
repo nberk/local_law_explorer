@@ -11,19 +11,29 @@ ordinary people. Live at https://locallaw.pages.dev. The **homepage** leads with
 "what are the local laws where I live?" — the finder sits **at the top**
 (headline "Know your local laws." + a one-line framing + `FindMyTown`, with a
 "learn more ↓" link jumping past the fold), so the interactive action is
-above-the-fold and the prose is out of the way. Below it: a small "or explore"
-row of cards, then the fuller **dataset explainer** at `#about` (the "learn more"
+above-the-fold and the prose is out of the way. Below it: the fuller **dataset
+explainer** at `#about` (the "learn more"
 target), then the **stats** grid ("the dataset, in numbers"), and last of all the
 **"not legal advice"** disclaimer box. Each jurisdiction page opens
-with a plain-English **report card** (`PlacePortrait`: a one-line summary plus
+with a **prominent search box** (`TopSearch`, inside `JurisdictionModules`: a
+clearly-labeled "Search <place>'s laws" bar at the very top so it's obvious up
+front that every rule is searchable — it doesn't search itself, it forwards the
+term to the full `LawBrowser` below via a `seed` prop, which prefills the query
+and scrolls the browse into view), then a plain-English **report card**
+(`PlacePortrait`: a one-line summary plus
 three spelled-out **static spectrum bars** — Plain↔Dense, Hands-off↔Regulates-
 conduct, Bright-line↔Left-to-officials — a filled gradient with a caret pointer,
 deliberately NOT a slider since it isn't draggable; each has a worked explanation
 of what the dimension means and an expander to the real laws), then everyday "Can I…?"
-questions with the **full law text inline** (`CommonQuestions`), then notable
-rules, then a full searchable browse ("dig deeper", `LawBrowser`, the site's only
-free-text search), and finally the topic mix (`TopicFingerprint`) demoted to the
-**bottom**. The only site-level surface is `/map` ("Explore cities" — the
+questions as **collapsible cards** (`CommonQuestions`: each question is a one-line
+row showing how many local rules mention it; opening it reveals those rules with
+the full law text inline — collapsed by default so a code with thousands of laws
+stays scannable), then the full searchable browse ("dig deeper", `LawBrowser`,
+the site's only free-text search), and finally the topic mix (`TopicFingerprint`)
+demoted to the **bottom**. (A "Notable rules" section — a text-only
+distinctiveness heuristic — was **removed on 2026-06-25** as not meaningful; the
+pipeline still emits a `notable` array but nothing displays it, and the
+`NotableRules` component + `NOTABLE_REASON_LABEL`/`NotableRef` were deleted.) The only site-level surface is `/map` ("Explore cities" — the
 national map plus the search-first `JurisdictionPicker`). (A `/spectrum` ("How
 laws differ") page with two `SpectrumExplorer` islands was **removed on
 2026-06-25** — see `docs/remove-spectrum.md`.) Not legal
@@ -125,7 +135,7 @@ they meet only at JSON files in `public/data/`.
    the browser, a **single** `JurisdictionModules` island `fetch`es that
    jurisdiction's file **once** from `` `${DATA_BASE_URL}/${id}.json` `` (R2 in
    prod; `/data` locally — see `src/lib/clientData.ts`) and shares the parsed
-   document across `PlacePortrait`, `CommonQuestions`, `NotableRules`, and the
+   document across `TopSearch`, `PlacePortrait`, `CommonQuestions`, and the
    `LawBrowser` browse tail (avoiding a 4× refetch of a multi-MB file). The place
    **name** shown by those modules is passed in as a prop from the page
    (`j.name`, from `index.json`, where the geocoder repairs OCR-glued names —
@@ -139,8 +149,10 @@ they meet only at JSON files in `public/data/`.
    Site-level surfaces sit on top of the per-jurisdiction pages: the **homepage**
    hero is `FindMyTown` (the primary "what are the laws where I live?" action,
    above the fold under a one-line framing, with a "learn more ↓" link to
-   `#about`), then an "or explore" card row, then the `#about` dataset explainer,
-   then the **stats** grid, and the **disclaimer box last of all**. The
+   `#about`), then the `#about` dataset explainer,
+   then the **stats** grid, and the **disclaimer box last of all**. The `/map`
+   page is still reached from the header's "Explore cities" link (the homepage
+   "or explore" card row was removed 2026-06-25). The
    **search-first** `JurisdictionPicker` (a largest-first
    shortlist until you type, then name/state filtering capped at ~60 results — it
    must not render ~2,000 cards) lives on **`/map`** ("Explore cities") under the
@@ -258,12 +270,12 @@ geo still use nearest-centroid. Precise coords never leave the browser.
   the browse by it, and it is excluded from the dimension explorer and city
   ranking (`DIMENSION_META` lists only the three verified dimensions).
 - **Synthesized views** (precomputed in the pipeline, rendered client-side):
-  `portrait` (comparative percentiles + sentences, all labeled estimates),
+  `portrait` (comparative percentiles + sentences, all labeled estimates) and
   `questions` (`{id, matches[]}`; `QUESTIONS_META` ids ↔ `QUESTIONS` in the
-  pipeline — surfaces "rules that mention this," never a yes/no), `notable`
-  (`{id, reason}`; `NOTABLE_REASON_LABEL` ↔ `NOTABLE_GROUPS` — matches words, not
-  meaning). These carry only law ids, resolved client-side against
-  `Jurisdiction.laws`.
+  pipeline — surfaces "rules that mention this," never a yes/no). These carry
+  only law ids, resolved client-side against `Jurisdiction.laws`. (The pipeline
+  also emits a `notable` view, but its display surface was removed 2026-06-25, so
+  the site no longer reads it.)
 
 ## Result ordering & search (`src/components/LawBrowser.tsx`)
 
@@ -307,7 +319,17 @@ The search-first picker no longer buckets on `size`; it orders by law count
   (planned name `locallaw-data`, prefix `data/`), set on the Pages project as the
   build env var **`PUBLIC_DATA_BASE_URL`** (the bucket's public `r2.dev`/custom
   URL). Bucket created via `wrangler r2 bucket create`; **CORS** must allow `GET`
-  from the Pages origin + `http://localhost:4321`. Bulk upload with
+  from every origin the site is served on + `http://localhost:4321`. The data
+  lives on a *different origin* (`pub-….r2.dev`) than the site, so every new site
+  domain (a Pages custom domain, an apex, a vanity host) is a fresh cross-origin
+  source that R2 must be told to trust — adding the Pages custom domain does **not**
+  update R2 CORS. The canonical allowlist is committed at **`r2-cors.json`**; edit
+  it and re-apply with `bunx wrangler r2 bucket cors set locallaw-data --file
+  r2-cors.json` (wrangler OAuth, no token needed). A missing origin looks like
+  "Could not load this jurisdiction's data" on *every* place (the per-jurisdiction
+  fetch is CORS-blocked) while the HTML loads fine. Current origins: `locallaw.pages.dev`
+  + `*.locallaw.pages.dev` (preview deploys) + `locallaws.nick-berk.com` +
+  `locallaws.nickberkconsulting.com` + localhost. Bulk upload with
   `aws s3 sync data-build/ s3://locallaw-data/data/ --endpoint-url
   https://<account>.r2.cloudflarestorage.com` (wrangler has no bulk sync). The R2
   S3 token is an **operator secret** — keep it in the macOS Keychain
@@ -333,9 +355,9 @@ The search-first picker no longer buckets on `size`; it orders by law count
 - **Honesty guardrails (don't weaken):** portrait dimensions are labeled machine
   estimates and phrased as percentiles ("plainer than 70% of towns"), never
   verdicts; `problem_salience` stays out of visible copy until verified; questions
-  surface "rules that mention this," not yes/no answers; notable rules state they
-  match words, not meaning; in-town search (`LawBrowser`) ranks the town's own
-  laws by keyword match and never writes an answer.
+  surface "rules that mention this," not yes/no answers; in-town search
+  (`LawBrowser`) ranks the town's own laws by keyword match and never writes an
+  answer.
 - **Plain-language translations: allowed, but always labeled and secondary.** The
   old "original text only" guardrail (plan doc D1) was **lifted (2026-06-23)** at
   the user's direction. We may publish plain-language translations of laws, but:
@@ -345,7 +367,7 @@ The search-first picker no longer buckets on `size`; it orders by law count
   generated at build time. (Since the `/spectrum` page was removed 2026-06-25 they
   are not currently displayed anywhere — the data is retained for a future
   surface.) Nothing on the site makes a model call over law text
-  at build time or runtime — portrait, questions, notable, in-town search, and
+  at build time or runtime — portrait, questions, in-town search, and
   the translations are all precomputed or hand-written.
 
 ## Deeper context

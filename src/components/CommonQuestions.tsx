@@ -52,6 +52,61 @@ function MatchedLaw({ law }: { law: Law }) {
   );
 }
 
+// A single question, collapsed to its headline + match count by default. The
+// matched rules (often many, each with full verbatim text) are hidden until the
+// reader opens the card, so a code with thousands of laws stays scannable.
+function QuestionCard({
+  question,
+  matched,
+}: {
+  question: string;
+  matched: Law[];
+}) {
+  const [open, setOpen] = useState(false);
+  const count = matched.length;
+
+  return (
+    <div className="rounded-lg border border-[var(--rule)] bg-white">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-3 p-4 text-left"
+      >
+        <h3 className="flex-1 font-display text-[15.5px] font-semibold leading-snug text-ink-900">
+          {question}
+        </h3>
+        <span className="shrink-0 text-[12px] text-ink-400">
+          {count} {count === 1 ? "rule" : "rules"}
+        </span>
+        <svg
+          className={
+            "shrink-0 text-ink-400 transition-transform " +
+            (open ? "rotate-180" : "")
+          }
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          aria-hidden="true"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+
+      {open && (
+        <ul className="space-y-2.5 border-t border-[var(--rule)] px-4 pb-4 pt-3">
+          {matched.map((law) => (
+            <MatchedLaw key={law.id} law={law} />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 // Module 2 — everyday "Can I ...?" questions answered by surfacing the rule(s)
 // that mention the topic. A keyword match is NOT a yes/no answer, so the framing
 // routes the reader to the actual text and never asserts the legal outcome.
@@ -87,27 +142,18 @@ export default function CommonQuestions({
         Everyday questions
       </h2>
       <p className="mt-2 text-[13.5px] leading-relaxed text-ink-500">
-        Common everyday questions, with the actual {name} rules that mention them
-        shown in full. A keyword match is not a legal answer — read the text and
+        Common everyday questions. Open one to read the actual {name} rules that
+        mention it. A keyword match is not a legal answer — read the text and
         verify against the official {name} code.
       </p>
 
       <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
         {answered.map(({ meta, matched }) => (
-          <div
+          <QuestionCard
             key={meta.id}
-            className="rounded-lg border border-[var(--rule)] bg-white p-4"
-          >
-            <h3 className="font-display text-[15.5px] font-semibold leading-snug text-ink-900">
-              {meta.question}
-            </h3>
-
-            <ul className="mt-3 space-y-2.5">
-              {matched.map((law) => (
-                <MatchedLaw key={law.id} law={law} />
-              ))}
-            </ul>
-          </div>
+            question={meta.question}
+            matched={matched}
+          />
         ))}
       </div>
     </section>

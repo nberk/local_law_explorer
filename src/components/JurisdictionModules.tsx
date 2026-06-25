@@ -1,15 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Jurisdiction } from "../lib/topics";
 import { DATA_BASE_URL } from "../lib/clientData";
 import PlacePortrait from "./PlacePortrait";
 import CommonQuestions from "./CommonQuestions";
-import NotableRules from "./NotableRules";
 import LawBrowser from "./LawBrowser";
 
 // One client island for the whole jurisdiction page. It fetches the (potentially
 // multi-MB) per-jurisdiction file ONCE and shares the parsed document across the
-// portrait, questions, notable, and browse modules — avoiding the up-to-4x
-// refetch we'd incur if each module fetched on its own.
+// portrait, questions, and browse modules — avoiding the up-to-3x refetch we'd
+// incur if each module fetched on its own.
 //
 // `name` is passed in from the page (sourced from index.json, where the geocoder
 // repairs OCR-glued slug names like "Newyorkcity" → "New York City"). We use it
@@ -24,6 +23,11 @@ export default function JurisdictionModules({
 }) {
   const [data, setData] = useState<Jurisdiction | null>(null);
   const [err, setErr] = useState(false);
+
+  // A search typed in the prominent top bar is handed to the full LawBrowser
+  // below via a fresh object (new identity each submit, so the same term twice
+  // still fires LawBrowser's seed effect, which scrolls the browse into view).
+  const [seed, setSeed] = useState<{ q: string } | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -50,9 +54,17 @@ export default function JurisdictionModules({
 
   return (
     <>
+      {/* Prominent, up-front search. The full browse (lenses, topic filters,
+          chips) lives at the bottom; this makes it obvious from the top of the
+          page that every rule is searchable, and jumps you there on submit. */}
+      <TopSearch
+        name={name}
+        count={data.laws.length}
+        onSearch={(q) => setSeed({ q })}
+      />
+
       <PlacePortrait portrait={data.portrait} name={name} laws={data.laws} />
       <CommonQuestions questions={data.questions} laws={data.laws} name={name} />
-      <NotableRules notable={data.notable} laws={data.laws} name={name} />
 
       <section className="mt-12 border-t border-[var(--rule)] pt-8">
         <h2 className="font-display text-[20px] font-semibold text-ink-900">
@@ -62,9 +74,58 @@ export default function JurisdictionModules({
           The full set of substantive ordinances, by topic, with search.
         </p>
         <div className="mt-5">
-          <LawBrowser jurisId={jurisId} data={data} />
+          <LawBrowser jurisId={jurisId} data={data} seed={seed} />
         </div>
       </section>
     </>
+  );
+}
+
+// Top-of-page search prompt. It doesn't search on its own — it forwards the term
+// to the real LawBrowser below (single source of search truth) and lets that
+// component scroll itself into view.
+function TopSearch({
+  name,
+  count,
+  onSearch,
+}: {
+  name: string;
+  count: number;
+  onSearch: (q: string) => void;
+}) {
+  const [value, setValue] = useState("");
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSearch(value.trim());
+  };
+
+  return (
+    <div className="mt-2 rounded-xl border border-ink-200 bg-white p-4 shadow-sm">
+      <label
+        htmlFor="top-search"
+        className="block text-[14px] font-semibold text-ink-900"
+      >
+        Search {name}’s laws
+      </label>
+      <p className="mt-0.5 text-[12.5px] text-ink-500">
+        Look up any rule in the full {count.toLocaleString()}-ordinance code — or
+        read the highlights below first.
+      </p>
+      <form onSubmit={submit} className="mt-3 flex gap-2">
+        <input
+          id="top-search"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="noise, chickens, fences, permits, parking…"
+          className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-[14px] placeholder:text-ink-400 focus:border-accent-500 focus:outline-none"
+        />
+        <button
+          type="submit"
+          className="shrink-0 rounded-md bg-ink-900 px-4 py-2 text-[14px] font-medium text-white transition hover:bg-ink-700"
+        >
+          Search
+        </button>
+      </form>
+    </div>
   );
 }

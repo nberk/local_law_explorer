@@ -28,9 +28,13 @@ function isBoilerplate(law: Law): boolean {
 export default function LawBrowser({
   jurisId,
   data: preloaded,
+  seed,
 }: {
   jurisId: string;
   data?: Jurisdiction;
+  // A search forwarded from the prominent top-of-page bar. A new object each
+  // submit (even for the same term) so this fires every time.
+  seed?: { q: string } | null;
 }) {
   const [fetched, setFetched] = useState<Jurisdiction | null>(null);
   const data = preloaded ?? fetched;
@@ -79,6 +83,19 @@ export default function LawBrowser({
       rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
     );
   }, [data]);
+
+  // Apply a search forwarded from the top-of-page bar: reset to the everyday
+  // lens + all topics so the term isn't hidden by a stale filter, prefill the
+  // query, and scroll the browse into view. Skips the initial mount (seed null).
+  useEffect(() => {
+    if (!seed) return;
+    setLens("everyday");
+    setTopic("All");
+    setQ(seed.q);
+    requestAnimationFrame(() =>
+      rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
+  }, [seed]);
 
   const lensCounts = useMemo(() => {
     const c: Record<string, number> = { everyday: 0, business: 0, renting: 0 };
