@@ -23,3 +23,8 @@ scratchpad/
 # R2; only the small index.json/baselines.json/etc. stay in public/data.
 locus-data/
 data-build/
+
+# remotion sizzle reel: rendered video + bundler cache (see docs/sizzle-reel.md).
+# The remotion/ source IS committed; the rendered mp4 is a regenerable artifact.
+out/
+.remotion/
