@@ -1,0 +1,19 @@
+{
+  "rules": [
+    {
+      "allowed": {
+        "origins": [
+          "https://locallaw.pages.dev",
+          "https://*.locallaw.pages.dev",
+          "https://locallaws.nick-berk.com",
+          "https://locallaws.nickberkconsulting.com",
+          "http://localhost:4321",
+          "http://localhost:4331"
+        ],
+        "methods": ["GET", "HEAD"],
+        "headers": ["*"]
+      },
+      "maxAgeSeconds": 3600
+    }
+  ]
+}
