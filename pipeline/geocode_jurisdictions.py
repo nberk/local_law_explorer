@@ -123,6 +123,16 @@ def _tokens(name: str):
             for t in re.sub(r"[^a-z0-9]+", " ", _fold(name).lower()).split() if t]
 
 
+def squash(name: str) -> str:
+    """Accent-folded, lowercased, alphanumerics-only form. Two names with the same
+    squash are the same string of letters differing only in spacing/punctuation/
+    case — e.g. "Newyorkcity" and "New York City" both squash to "newyorkcity".
+    Used to repair an OCR-glued slug name from the gazetteer's clean name WITHOUT
+    risking a rename to a different word (a deglue match like Jamestown→"James"
+    squashes differently, so it is never adopted)."""
+    return re.sub(r"[^a-z0-9]+", "", _fold(name).lower())
+
+
 def deglue_suffix(token: str) -> str:
     """Strip one trailing glued governance suffix from a single compact token:
     'ogdencity'->'ogden', 'bedfordbor'->'bedford', 'tionestaborough'->'tionesta'.
@@ -213,10 +223,12 @@ def _download(url: str, cache: Path) -> bytes:
 
 
 def load_geonames_cities(cache: Path):
-    """(state_upper, key) -> (lat, lon). Two keys per row (strict + suffix-relaxed);
-    on collisions the higher-population row wins."""
+    """(state_upper, key) -> (lat, lon, canonical_name). Two keys per row (strict +
+    suffix-relaxed); on collisions the higher-population row wins. The canonical
+    name is GeoNames' primary `name` field (proper casing/spacing/punctuation, e.g.
+    "New York City", "Coeur d'Alene") so callers can repair OCR-glued slug names."""
     raw = _download(GEONAMES_CITIES, cache)
-    best = {}  # key -> (population, lat, lon)
+    best = {}  # key -> (population, lat, lon, name)
     with zipfile.ZipFile(io.BytesIO(raw)) as zf:
         with zf.open("US.txt") as fh:
             for line in io.TextIOWrapper(fh, encoding="utf-8"):
@@ -242,8 +254,8 @@ def load_geonames_cities(cache: Path):
                         continue
                     k = (state.upper(), key)
                     if k not in best or pop > best[k][0]:
-                        best[k] = (pop, lat, lon)
-    return {k: (v[1], v[2]) for k, v in best.items()}
+                        best[k] = (pop, lat, lon, name)
+    return {k: (v[1], v[2], v[3]) for k, v in best.items()}
 
 
 def load_census_counties(cache: Path):
@@ -418,6 +430,7 @@ def main():
         return lookup_cousub(cs_name, cs_fips, county_fips, state, name)
 
     n_city = n_city_hit = n_county = n_county_hit = 0
+    n_name_fixed = 0
     misses = []
     for j in jurs:
         state = j["state"].upper()
@@ -426,6 +439,11 @@ def main():
             n_city += 1
         else:
             n_county += 1
+        # canon_name: the gazetteer's clean name when a GeoNames *city* row matched
+        # (the only source with reliably clean, properly-spaced names). County and
+        # county-subdivision (Census) names carry lowercase governance words like
+        # "Bedford township", so we never copy those onto j["name"].
+        canon_name = None
         ov = _OVERRIDES.get(j["id"])
         if ov:
             # LOCUS garbled this name; match the verified one, try every layer.
@@ -436,7 +454,11 @@ def main():
                    or cousub(state, hinted))
         elif is_city:
             # Townships/towns are typed "city" in LOCUS; fall back to MCDs.
-            hit = lookup_city(cities, state, j["name"]) or cousub(state, j["name"])
+            city_hit = lookup_city(cities, state, j["name"])
+            if city_hit:
+                hit, canon_name = city_hit, city_hit[2]
+            else:
+                hit = cousub(state, j["name"])
         else:
             hit = lookup_county(counties, state, j["name"]) or cousub(state, j["name"])
         if hit:
@@ -448,12 +470,23 @@ def main():
         else:
             j["lat"], j["lon"] = None, None
             misses.append(j["id"])
+        # Repair an OCR-glued slug name from the gazetteer — but only when it's
+        # provably the same place (identical letters, just respaced). _OVERRIDES
+        # carry a hand-verified name, so trust those outright.
+        if ov:
+            if j["name"] != ov[0]:
+                j["name"] = ov[0]
+                n_name_fixed += 1
+        elif canon_name and canon_name != j["name"] and squash(canon_name) == squash(j["name"]):
+            j["name"] = canon_name
+            n_name_fixed += 1
 
     Path(args.index).write_text(json.dumps(index, ensure_ascii=False))
     cpct = 100 * n_city_hit / n_city if n_city else 0
     kpct = 100 * n_county_hit / n_county if n_county else 0
     print(f"Geocoded cities  : {n_city_hit}/{n_city} ({cpct:.1f}%)")
     print(f"Geocoded counties: {n_county_hit}/{n_county} ({kpct:.1f}%)")
+    print(f"Names repaired   : {n_name_fixed} (OCR-glued slug names fixed from gazetteer)")
     if misses:
         print(f"  {len(misses)} unmatched (skipped): {', '.join(misses[:20])}"
               + (" …" if len(misses) > 20 else ""))

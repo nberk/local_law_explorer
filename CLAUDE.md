@@ -8,9 +8,13 @@ Local Law Explorer — a free, non-commercial static site that turns the open
 **LOCUS-v1** local-ordinance corpus into plain, readable city/county law for
 ordinary people. Live at https://locallaw.pages.dev. The **homepage** leads with
 **"find your town"** (`FindMyTown`) as the hero — the core job-to-be-done is
-"what are the local laws where I live?" — then a lead **dataset explainer +
-stats** and the **"not legal advice"** disclaimer up front, then a small "or
-explore" row of cards linking to the other surfaces. Each jurisdiction page opens
+"what are the local laws where I live?" — the finder sits **at the top**
+(headline "Know your local laws." + a one-line framing + `FindMyTown`, with a
+"learn more ↓" link jumping past the fold), so the interactive action is
+above-the-fold and the prose is out of the way. Below it: a small "or explore"
+row of cards, then the fuller **dataset explainer** at `#about` (the "learn more"
+target), then the **stats** grid ("the dataset, in numbers"), and last of all the
+**"not legal advice"** disclaimer box. Each jurisdiction page opens
 with a plain-English **report card** (`PlacePortrait`: a one-line summary plus
 three spelled-out **static spectrum bars** — Plain↔Dense, Hands-off↔Regulates-
 conduct, Bright-line↔Left-to-officials — a filled gradient with a caret pointer,
@@ -19,10 +23,11 @@ of what the dimension means and an expander to the real laws), then everyday "Ca
 questions with the **full law text inline** (`CommonQuestions`), then notable
 rules, then a full searchable browse ("dig deeper", `LawBrowser`, the site's only
 free-text search), and finally the topic mix (`TopicFingerprint`) demoted to the
-**bottom**. Site-level surfaces: `/map` ("Explore cities" — the national map plus
-the search-first `JurisdictionPicker`), `/spectrum` ("How laws differ" — the two
-`SpectrumExplorer` islands with a clear explanation of the scoring), and
-`/rankings` (places on the national scale). Not legal advice; the text is
+**bottom**. The only site-level surface is `/map` ("Explore cities" — the
+national map plus the search-first `JurisdictionPicker`). (A `/spectrum` ("How
+laws differ") page with two `SpectrumExplorer` islands was **removed on
+2026-06-25** — see `docs/remove-spectrum.md`.) Not legal
+advice; the text is
 OCR'd, every label/score is a machine estimate, and plain-language translations
 are AI paraphrases, not the law.
 
@@ -45,6 +50,8 @@ bun run preview             # serve the built dist/
 bun run data:build          # regenerate per-jurisdiction JSON (see pipeline below)
 bun run data:geo            # rebuild the ZIP→coords table for "Find my town" (needs: pip install certifi)
 bun run data:geocode        # write lat/lon onto each jurisdiction + ZIP→county (needs: pip install certifi)
+bun run reel:studio         # open Remotion Studio to preview/tweak the social sizzle reel
+bun run reel                # render the sizzle reel → out/sizzle-square.mp4 (see docs/sizzle-reel.md)
 ```
 
 **Full-rollout build (all cities + counties — see `docs/full-rollout.md`):** read
@@ -95,8 +102,10 @@ they meet only at JSON files in `public/data/`.
      + percentiles + `lowConfidence`/`limitedCoverage` flags), `match_questions`
      (the "Can I…?" lens), `notable_rules` (distinctiveness heuristic). Writes
      `public/data/<state>/<slug>.json` (portrait + questions + notable + laws) plus
-     an `index.json` manifest entry (counts, size, `portraitTeaser`, and
-     `dimensions` = per-dimension national percentiles for the ranking page).
+     an `index.json` manifest entry (counts, size, `portraitTeaser`). (The build
+     also still emits a per-dimension `dimensions` percentile block per entry,
+     now unused after the rankings page was removed — harmless dead data until
+     the next data rebuild drops it.)
    - **Spectrum explorers** (`build_spectrum`, in the dependency-free
      `pipeline/spectrum.py` so the selection rule is shared, not duplicated):
      picks ~20 legible laws evenly spaced across each of opacity/paternalism, one
@@ -108,7 +117,7 @@ they meet only at JSON files in `public/data/`.
 
 2. **Static site** (Astro 6 + React islands + Tailwind v4) — at build time
    `src/lib/data.ts` reads `index.json`/`baselines.json`/etc. (`loadIndex`,
-   `loadBaselines`, `loadSpectrum`) and `src/pages/[state]/[city].astro`
+   `loadBaselines`) and `src/pages/[state]/[city].astro`
    statically generates one page per jurisdiction via `getStaticPaths`.
    **Build-cost rule:** pages use only **summary** fields from `index.json`;
    `loadJurisdiction()` is gone — never read a per-jurisdiction file at build time
@@ -117,43 +126,49 @@ they meet only at JSON files in `public/data/`.
    jurisdiction's file **once** from `` `${DATA_BASE_URL}/${id}.json` `` (R2 in
    prod; `/data` locally — see `src/lib/clientData.ts`) and shares the parsed
    document across `PlacePortrait`, `CommonQuestions`, `NotableRules`, and the
-   `LawBrowser` browse tail (avoiding a 4× refetch of a multi-MB file). The
+   `LawBrowser` browse tail (avoiding a 4× refetch of a multi-MB file). The place
+   **name** shown by those modules is passed in as a prop from the page
+   (`j.name`, from `index.json`, where the geocoder repairs OCR-glued names —
+   see "Find my town"), **not** read from the fetched doc's `data.name`, so a
+   name fix in the manifest shows without re-uploading the per-jurisdiction file. The
    `index.json` manifest is **client-fetched** (`loadIndexClient`, memoized), not
    SSR-inlined, so a ~2,000-entry array never bloats every page's HTML — the
-   homepage islands (`JurisdictionPicker`, `FindMyTown`) and `RankingsTable` fetch
+   homepage islands (`JurisdictionPicker`, `FindMyTown`) fetch
    it on mount.
 
    Site-level surfaces sit on top of the per-jurisdiction pages: the **homepage**
-   hero is `FindMyTown` (the primary "what are the laws where I live?" action),
-   followed by the lead dataset explainer + stats, the disclaimer, and an "or
-   explore" card row. The **search-first** `JurisdictionPicker` (a largest-first
+   hero is `FindMyTown` (the primary "what are the laws where I live?" action,
+   above the fold under a one-line framing, with a "learn more ↓" link to
+   `#about`), then an "or explore" card row, then the `#about` dataset explainer,
+   then the **stats** grid, and the **disclaimer box last of all**. The
+   **search-first** `JurisdictionPicker` (a largest-first
    shortlist until you type, then name/state filtering capped at ~60 results — it
    must not render ~2,000 cards) lives on **`/map`** ("Explore cities") under the
-   national map. The two `SpectrumExplorer` islands over `spectrum.json` (a
-   draggable tick-marked rail per dimension, plain-language ⇄ original toggle;
-   opacity also shows readability facts + a "squint" blur) live on **`/spectrum`**
-   ("How laws differ") with an up-front explanation of the scoring.
+   national map. (The `/spectrum` "How laws differ" page — two `SpectrumExplorer`
+   islands over `spectrum.json` plus `src/lib/readability.ts` — was **removed on
+   2026-06-25**; `spectrum.json` and `build_spectrum` are kept but now feed
+   nothing on the site, so the hand-authored plain-language translations have no
+   display surface. See `docs/remove-spectrum.md`.)
    There is no global free-text search surface; search is an in-town action in
-   `LawBrowser`. `/rankings` (`RankingsTable`)
-   places covered jurisdictions on the national distribution per dimension
-   (top-100 on the chosen axis; national-percentile framing, never a leaderboard
-   verdict). **State directory pages** live at `/[state]`
+   `LawBrowser`. (A `/rankings` page that placed covered jurisdictions on the
+   national distribution per dimension was **removed on 2026-06-25** along with
+   its `RankingsTable` + `NationalPositionBar` islands — see
+   `docs/remove-rankings.md`.) **State directory pages** live at `/[state]`
    (`src/pages/[state]/index.astro`, one per state via `getStaticPaths`): fully
    server-rendered from `index.json` summary fields, they list every covered city
    + county in that state (grouped, largest-first, with a vanilla-JS name filter)
    and are reached by clicking the state in a place page's breadcrumb. Inside a
    place page, the topic mix renders as
-   `TopicFingerprint` (`.astro`, server-rendered: per-topic bars vs. the national
-   median share, the fix for the old confusing "more laws of X" copy) and is
+   `TopicFingerprint` (`.astro`, server-rendered, pure SVG: a **donut** of this
+   town's topic composition with the count in the hole, beside a **legend** that
+   lays the comparison a donut can't carry onto each row — the town's share, an
+   over/under cue vs. a typical U.S. town, and that typical share) and is
    **demoted to the bottom of the page**; each `PlacePortrait` spectrum expands into
    `DimensionLaws` — the town's own laws
-   ranked by that raw z-score. `NationalPositionBar` (rankings page only now)
-   shows a place's 0–100 position with a "typical town" (50th) mark.
+   ranked by that raw z-score.
    `LawBrowser` shows place-aware starter chips (`BROWSE_SUGGESTIONS`, filtered to
    terms that actually match locally). Shared dimension labels/direction live in
-   `DIMENSION_META` (`topics.ts`); readability math lives in
-   `src/lib/readability.ts` (deterministic facts counted from the text, not model
-   output).
+   `DIMENSION_META` (`topics.ts`).
 
 The **small** files in `public/data/` are **committed** (`index.json`,
 `baselines.json`, `spectrum.json`, `geo/`; the 19
@@ -179,9 +194,12 @@ committed, so the page was a dead end (see `docs/homepage-declutter-search.md`).
 Search now lives **inside a place page**: `LawBrowser` searches that town's loaded
 laws (title-prefix > title > section > body), which needs no index infra and
 works at full rollout. The decision was "direction A: in-town search," with
-plain-language translation kept **hand-authored only** (in `spectrum.json`, shown
-by the spectrum explorers) — no runtime model call over law text. If a global
-semantic search is ever revived (direction B), it returns to the git history.
+plain-language translation kept **hand-authored only** (in `spectrum.json`) — no
+runtime model call over law text. **Those translations currently have no display
+surface**: the only page that showed them, `/spectrum`, was removed 2026-06-25
+(`docs/remove-spectrum.md`); the data + pipeline step are retained so a future
+surface can use them. If a global semantic search is ever revived (direction B),
+it returns to the git history.
 
 ### Find my town (homepage geolocation)
 
@@ -201,6 +219,22 @@ handle OCR-mangled slugs ("ogdencity"→Ogden, "Española"→Espanola); a small
 `_OVERRIDES` table supplies *verified names* (never raw coords) for the few slugs
 LOCUS garbled past repair ("aurel"→Aurelia, "hempstead bzo"→Town of Hempstead).
 Coverage is **100%** (2287/2287) — every place appears in "find my town".
+
+**The geocoder is also the display-name fixer.** OCR-glued slugs produce broken
+`name`s from `build.py`'s naive `display_name` ("newyorkcity"→"Newyorkcity",
+"grandisland"→"Grandisland") — there is no string rule that splits these without
+also breaking real single-word names ("chattanooga"). So when a city matches a
+GeoNames populated place, `geocode_jurisdictions.py` writes that record's
+**canonical name** back onto `index.json`'s `name`, but **only when it is provably
+the same place** — i.e. `squash(canonical) == squash(current)` (accent-folded,
+lowercased, alphanumerics only). That reformats spacing/casing/punctuation ("New
+York City", "Coeur d'Alene", "McMinnville", "Cañon City") while making it
+impossible to rename to a *different* word (a deglue match like Jamestown→"James"
+squashes differently and is rejected). `_OVERRIDES` names are trusted outright.
+~118 names are repaired; coords are unchanged. The fix lands in `index.json` only
+(the manifest is authoritative for names); the per-jurisdiction R2 files keep
+their stale build-time `name` (unused — see below), so a name fix needs only
+`data:geocode`, not a full `data:build` + R2 re-upload. See `docs/name-repair.md`.
 ZIP→coords uses `public/data/geo/zip-centroids.json` (built by
 `pipeline/build_geo.py` from GeoNames), entries now `[lat, lon, countyId?]` so a
 ZIP returns the **exact** containing county (added by `data:geocode`); device/IP
@@ -308,7 +342,9 @@ The search-first picker no longer buckets on `size`; it orders by law count
   they appear *alongside* the verbatim text (never replacing it), are labeled "AI
   paraphrase, not the law — verify before relying on it," and live only in
   `public/data/spectrum.json`. They are **hand-authored and committed**, never
-  generated at build time. Nothing on the site makes a model call over law text
+  generated at build time. (Since the `/spectrum` page was removed 2026-06-25 they
+  are not currently displayed anywhere — the data is retained for a future
+  surface.) Nothing on the site makes a model call over law text
   at build time or runtime — portrait, questions, notable, in-town search, and
   the translations are all precomputed or hand-written.
 
@@ -324,3 +360,12 @@ homepage, the D1 plain-language reversal, and the `TopicFingerprint` /
 `docs/full-rollout.md` records the 2026-06-24 scale-up to all cities + counties:
 the R2 data store, the `data-build/` split, client-fetched `index.json`, the
 geocoding step, the search-first picker, and the nearest-city-and-county geo.
+`docs/remove-rankings.md` records the 2026-06-25 removal of the `/rankings` page
+(and its `RankingsTable` + `NationalPositionBar` islands) and the nav/homepage
+links to it.
+`docs/remove-spectrum.md` records the 2026-06-25 removal of the `/spectrum` "How
+laws differ" page (its `SpectrumExplorer`/`readability.ts`/`loadSpectrum`).
+`docs/name-repair.md` records the geocoder-based fix for OCR-glued jurisdiction
+names ("Newyorkcity" → "New York City").
+`docs/sizzle-reel.md` documents the Remotion social promo video under `remotion/`
+(`bun run reel`), a stand-alone asset that doesn't touch the Astro site.

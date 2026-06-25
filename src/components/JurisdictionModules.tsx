@@ -10,7 +10,18 @@ import LawBrowser from "./LawBrowser";
 // multi-MB) per-jurisdiction file ONCE and shares the parsed document across the
 // portrait, questions, notable, and browse modules — avoiding the up-to-4x
 // refetch we'd incur if each module fetched on its own.
-export default function JurisdictionModules({ jurisId }: { jurisId: string }) {
+//
+// `name` is passed in from the page (sourced from index.json, where the geocoder
+// repairs OCR-glued slug names like "Newyorkcity" → "New York City"). We use it
+// instead of the per-jurisdiction file's `data.name`, which carries the raw
+// build-time name and is not regenerated when only the manifest name changes.
+export default function JurisdictionModules({
+  jurisId,
+  name,
+}: {
+  jurisId: string;
+  name: string;
+}) {
   const [data, setData] = useState<Jurisdiction | null>(null);
   const [err, setErr] = useState(false);
 
@@ -39,17 +50,9 @@ export default function JurisdictionModules({ jurisId }: { jurisId: string }) {
 
   return (
     <>
-      <PlacePortrait
-        portrait={data.portrait}
-        name={data.name}
-        laws={data.laws}
-      />
-      <CommonQuestions
-        questions={data.questions}
-        laws={data.laws}
-        name={data.name}
-      />
-      <NotableRules notable={data.notable} laws={data.laws} name={data.name} />
+      <PlacePortrait portrait={data.portrait} name={name} laws={data.laws} />
+      <CommonQuestions questions={data.questions} laws={data.laws} name={name} />
+      <NotableRules notable={data.notable} laws={data.laws} name={name} />
 
       <section className="mt-12 border-t border-[var(--rule)] pt-8">
         <h2 className="font-display text-[20px] font-semibold text-ink-900">

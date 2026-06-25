@@ -91,8 +91,8 @@ export interface Portrait {
 }
 
 // The three verified score dimensions, with the labels every comparative view
-// (Portrait explorer, city ranking, spectrum page) shares so wording and
-// direction never drift. problem_salience is intentionally absent: its meaning
+// (the place-page portrait and its `DimensionLaws` expander) shares so wording
+// and direction never drift. problem_salience is intentionally absent: its meaning
 // is unverified against the paper (the `verifyCopy` guardrail), so it is never
 // ranked, sorted, or shown. `inverted` dimensions read better flipped (a high
 // opacity z-score means dense writing, which we surface as low "plainness").
@@ -101,10 +101,9 @@ export type DimensionKey = "opacity" | "paternalism" | "enforcement_discretion";
 export interface DimensionMeta {
   key: DimensionKey;
   label: string; // axis name
-  rankLabel: string; // toggle/column label on the ranking page (percentile framing)
   inverted: boolean; // ranking shows displayPercentile (100 - percentile)
-  mostLabel: string; // the high-raw-score end of the explorer rail
-  leastLabel: string; // the low-raw-score end
+  mostLabel: string; // high-raw-score end (DimensionLaws header)
+  leastLabel: string; // low-raw-score end
   note: string; // one-line "what this estimates" caveat
   // Short labels for the two ends of the place-page gauge (low raw score → high).
   lowEnd: string;
@@ -123,7 +122,6 @@ export const DIMENSION_META: DimensionMeta[] = [
   {
     key: "opacity",
     label: "Writing density",
-    rankLabel: "Plainness",
     inverted: true,
     mostLabel: "Most densely worded",
     leastLabel: "Plainest",
@@ -138,7 +136,6 @@ export const DIMENSION_META: DimensionMeta[] = [
   {
     key: "paternalism",
     label: "Personal-conduct rules",
-    rankLabel: "Conduct regulated",
     inverted: false,
     mostLabel: "Most restrictive of personal conduct",
     leastLabel: "Least restrictive of personal conduct",
@@ -153,7 +150,6 @@ export const DIMENSION_META: DimensionMeta[] = [
   {
     key: "enforcement_discretion",
     label: "Enforcement discretion",
-    rankLabel: "Left to officials",
     inverted: false,
     mostLabel: "Most left to officials' judgment",
     leastLabel: "Most spelled out",
@@ -199,9 +195,6 @@ export interface JurisdictionSummary {
   medianOpacity: number | null;
   size: "large" | "small";
   portraitTeaser?: { headline: string; lowConfidence: boolean };
-  // National percentile per visible dimension, for the city-ranking page.
-  // Mirrors portrait.dimensions[].percentile; problem_salience omitted.
-  dimensions?: Partial<Record<DimensionKey, { percentile: number; displayPercentile?: number }>>;
   // Approximate jurisdiction center, filled in by pipeline/geocode_jurisdictions.py
   // (cities: GeoNames populated place; counties: Census Gazetteer internal point).
   // null when no confident geocode match — such places are skipped by "find my town".

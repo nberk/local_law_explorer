@@ -17,9 +17,13 @@ const { corpus } = loadIndex();
     <div class="mt-6 space-y-4 text-[15px] leading-relaxed text-ink-700">
       <p>
         Local Law Explorer is a free, non-commercial tool for reading the city and
-        county ordinances that shape everyday life. It is built on
+        county ordinances that shape everyday life. It is built entirely on
         <strong class="text-ink-900">LOCUS-v1</strong>, an open corpus of U.S.
-        local law released by researchers at UC Berkeley.
+        local law compiled by
+        <strong class="text-ink-900"
+          >Denis Peskoff, Joe Barrow, Christopher Vu, and Diag Davenport</strong
+        >. This site does not compile any of the data itself — it is a reader for
+        their work, and all credit for the underlying corpus is theirs.
       </p>
       <p>
         Local ordinances are the most fragmented body of law in the United
@@ -112,11 +116,20 @@ const { corpus } = loadIndex();
       </ul>
 
       <h2 class="font-display text-[22px] font-semibold text-ink-900 pt-2">
-        Attribution &amp; license
+        Credit &amp; license
       </h2>
+      <div
+        class="rounded-lg border border-accent-100 bg-accent-50 px-5 py-4 text-[15px] leading-relaxed text-ink-700"
+      >
+        The entire corpus behind this site was compiled by
+        <strong class="text-ink-900"
+          >Denis Peskoff, Joe Barrow, Christopher Vu, and Diag Davenport</strong
+        > in their 2026 work, <em>Freeing the Law with LOCUS</em>. This is their
+        dataset; Local Law Explorer is only a reader for it. If you use the data,
+        please credit and cite them.
+      </div>
       <p>
-        The underlying data is the LOCUS-v1 corpus by Denis Peskoff, Joe Barrow,
-        Christopher Vu, and Diag Davenport (2026), used under the
+        LOCUS-v1 is used under the
         <a
           href="https://creativecommons.org/licenses/by-nc/4.0/"
           class="underline hover:text-ink-900"
