@@ -1,0 +1,86 @@
+---
+import Layout from "../layouts/Layout.astro";
+import SpectrumExplorer from "../components/SpectrumExplorer.tsx";
+import { loadSpectrum } from "../lib/data";
+
+const { spectra } = loadSpectrum();
+---
+
+<Layout
+  title="How laws differ — Local Law Explorer"
+  description="Every local ordinance in the LOCUS corpus is scored by AI on a few dimensions, like how densely it's written and how much it regulates personal conduct. Drag across the scale to read real laws at each point. Machine estimates, not legal advice."
+>
+  <section class="max-w-3xl mx-auto px-6 pt-12">
+    <p class="font-mono text-[11px] uppercase tracking-wider text-ink-500">
+      How laws differ
+    </p>
+    <h1 class="mt-2 font-display text-4xl font-semibold text-ink-900 leading-tight">
+      Two laws can say the same thing in very different ways.
+    </h1>
+    <p class="mt-4 text-[16px] leading-relaxed text-ink-600">
+      One town bans “the keeping of swine” in a single plain sentence; another
+      buries the same rule in a page of cross-references and defined terms. The
+      LOCUS project used AI models to read every U.S. ordinance and give each one
+      a score on several dimensions — measuring not <em>what</em> a law says, but
+      <em>how</em> it’s written and how far it reaches into daily life.
+    </p>
+
+    <!-- how to read this -->
+    <div class="mt-6 rounded-lg border border-[var(--rule)] bg-white px-5 py-4">
+      <p class="font-mono text-[11px] uppercase tracking-wider text-ink-500">
+        How to read the scales below
+      </p>
+      <ul class="mt-3 space-y-2.5 text-[14.5px] leading-relaxed text-ink-700">
+        <li class="flex gap-2.5">
+          <span class="mt-0.5 font-mono text-[12px] text-accent-600">1.</span>
+          <span
+            >Each scale is a single dimension. Every law in the dataset gets a
+            score on it, and its position on the rail is its
+            <strong class="text-ink-900">national percentile</strong> — how it
+            compares with the ~2,300 cities and counties in the corpus.</span
+          >
+        </li>
+        <li class="flex gap-2.5">
+          <span class="mt-0.5 font-mono text-[12px] text-accent-600">2.</span>
+          <span
+            >Drag the handle from one end to the other to land on a
+            <strong class="text-ink-900">real law</strong> at that point. The
+            tick marks show where actual laws fall, so you can see the clusters.</span
+          >
+        </li>
+        <li class="flex gap-2.5">
+          <span class="mt-0.5 font-mono text-[12px] text-accent-600">3.</span>
+          <span
+            >Toggle between the <strong class="text-ink-900">original text</strong>
+            and a <strong class="text-ink-900">plain-language version</strong> we
+            wrote by hand. The plain version is a paraphrase to help you read it,
+            not the law itself.</span
+          >
+        </li>
+      </ul>
+    </div>
+
+    <div
+      class="mt-4 rounded-lg border border-ink-100 bg-ink-50 px-4 py-3 text-[12.5px] text-ink-600 leading-relaxed"
+    >
+      The scores are machine estimates from the LOCUS models, not official
+      ratings, and the text is OCR’d.
+      <span class="font-medium text-ink-800">Not legal advice.</span>
+    </div>
+  </section>
+
+  <section class="max-w-5xl mx-auto px-6 pt-8 pb-12">
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <SpectrumExplorer
+        client:load
+        dimKey="opacity"
+        laws={spectra.opacity.laws}
+      />
+      <SpectrumExplorer
+        client:load
+        dimKey="paternalism"
+        laws={spectra.paternalism.laws}
+      />
+    </div>
+  </section>
+</Layout>

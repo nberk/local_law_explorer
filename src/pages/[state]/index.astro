@@ -1,0 +1,138 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import TopicBar from "../../components/TopicBar.tsx";
+import { loadIndex } from "../../lib/data";
+import type { JurisdictionSummary } from "../../lib/topics";
+
+// A directory page per state: every covered city and county in that state. Built
+// from index.json summary fields only (never a per-jurisdiction file), so it's
+// cheap at full scale and fully server-rendered — crawlable, no loading spinner.
+export function getStaticPaths() {
+  const { jurisdictions } = loadIndex();
+  const byState = new Map<
+    string,
+    { slug: string; stateName: string; items: JurisdictionSummary[] }
+  >();
+  for (const j of jurisdictions) {
+    const slug = j.id.split("/")[0];
+    if (!byState.has(slug))
+      byState.set(slug, { slug, stateName: j.stateName, items: [] });
+    byState.get(slug)!.items.push(j);
+  }
+  return [...byState.values()].map((s) => ({
+    params: { state: s.slug },
+    props: { stateName: s.stateName, items: s.items },
+  }));
+}
+
+const { stateName, items } = Astro.props;
+
+// Largest first within each layer.
+const byCount = (a: JurisdictionSummary, b: JurisdictionSummary) =>
+  (b.counts.total || 0) - (a.counts.total || 0);
+const cities = items.filter((j) => j.type === "city").sort(byCount);
+const counties = items.filter((j) => j.type !== "city").sort(byCount);
+
+const groups = [
+  { label: "Cities", list: cities },
+  { label: "Counties", list: counties },
+].filter((g) => g.list.length > 0);
+---
+
+<Layout
+  title={`${stateName} — Local Law Explorer`}
+  description={`Every covered city and county in ${stateName}: ${items.length} local-law pages built on the LOCUS corpus. Not legal advice.`}
+>
+  <section class="max-w-6xl mx-auto px-6 pt-8 pb-12">
+    <nav class="text-[12px] text-ink-400">
+      <a href="/" class="hover:text-ink-900">Home</a>
+      <span class="mx-1.5">/</span>
+      <span class="text-ink-700">{stateName}</span>
+    </nav>
+
+    <h1
+      class="mt-3 font-display text-3xl sm:text-4xl font-semibold text-ink-900 leading-tight"
+    >
+      Local law in {stateName}
+    </h1>
+    <p class="mt-2 text-[15px] leading-relaxed text-ink-600">
+      The <span class="font-mono text-ink-800">{items.length.toLocaleString()}</span>
+      {items.length === 1 ? " place" : " cities and counties"} in {stateName} that
+      the LOCUS corpus covers. Open any one for a plain-English snapshot of how it
+      governs and the full code to browse.
+    </p>
+
+    <div class="mt-5 max-w-sm">
+      <input
+        id="state-filter"
+        type="text"
+        placeholder={`Filter ${stateName} places…`}
+        class="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-[14.5px] placeholder:text-ink-400 focus:border-accent-500 focus:outline-none"
+        autocomplete="off"
+      />
+      <p id="filter-empty" class="mt-3 hidden text-[14px] text-ink-500">
+        No place matches that name.
+      </p>
+    </div>
+
+    {
+      groups.map((g) => (
+        <div class="mt-8" data-group>
+          <h2 class="text-[11px] uppercase tracking-wider text-ink-500 font-medium">
+            {g.label}
+            <span class="ml-1.5 font-mono text-ink-400">{g.list.length}</span>
+          </h2>
+          <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {g.list.map((j) => (
+              <a
+                href={`/${j.id}`}
+                data-name={j.name.toLowerCase()}
+                class="group block rounded-lg border border-[var(--rule)] bg-white p-4 transition hover:border-ink-300 hover:shadow-sm"
+              >
+                <div class="flex items-baseline justify-between gap-3">
+                  <h3 class="font-display text-[16px] font-semibold text-ink-900 transition group-hover:text-accent-700">
+                    {j.name}
+                  </h3>
+                  <span class="font-mono text-[11.5px] text-ink-400 shrink-0">
+                    {j.counts.total.toLocaleString()} laws
+                  </span>
+                </div>
+                <div class="mt-2.5">
+                  <TopicBar counts={j.counts} />
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      ))
+    }
+  </section>
+</Layout>
+
+<script>
+  // Vanilla, no framework: filter the server-rendered cards by name. Hides empty
+  // group headings and shows a "no match" line. Cheap and works on every device.
+  const input = document.getElementById("state-filter") as HTMLInputElement | null;
+  const empty = document.getElementById("filter-empty");
+  const cards = Array.from(
+    document.querySelectorAll<HTMLElement>("[data-name]"),
+  );
+  const groups = Array.from(
+    document.querySelectorAll<HTMLElement>("[data-group]"),
+  );
+
+  input?.addEventListener("input", () => {
+    const q = input.value.trim().toLowerCase();
+    let anyVisible = false;
+    cards.forEach((c) => {
+      const show = !q || (c.dataset.name || "").includes(q);
+      c.classList.toggle("hidden", !show);
+      if (show) anyVisible = true;
+    });
+    groups.forEach((g) => {
+      const hasVisible = g.querySelector("[data-name]:not(.hidden)");
+      g.classList.toggle("hidden", !hasVisible);
+    });
+    empty?.classList.toggle("hidden", anyVisible);
+  });
+</script>

@@ -3,6 +3,11 @@
 
 /* Theme tokens mirror the legalbenchmarks design system. Light mode only. */
 @theme {
+  /* Extra-small breakpoint (Tailwind v4 ships none below sm/640). Lets the
+     header wordmark show on normal phones but collapse to the "L" mark on the
+     narrowest screens so the nav never forces horizontal page overflow. */
+  --breakpoint-xs: 400px;
+
   --color-ink-50: #f7f7f6;
   --color-ink-100: #ececea;
   --color-ink-200: #d8d8d4;

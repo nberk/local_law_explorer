@@ -4,22 +4,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Local Law Lookup — a free, non-commercial static site that turns the open
+Local Law Explorer — a free, non-commercial static site that turns the open
 **LOCUS-v1** local-ordinance corpus into plain, readable city/county law for
 ordinary people. Live at https://locallaw.pages.dev. The **homepage** leads with
 **"find your town"** (`FindMyTown`) as the hero — the core job-to-be-done is
-"what are the local laws where I live?" — then the search-first
-`JurisdictionPicker` ("already know the town?"), then two interactive **spectrum
-explorers** (`SpectrumExplorer`: opacity and paternalism) demoted below the
-fold as the plain-language showcase (they sample ~20 real laws across a score
-dimension and pair the verbatim text with a hand-authored plain-language
-translation), then a dataset explainer. Each jurisdiction page opens with a
-synthesized **Place Portrait** (how this town governs vs. the rest of the US),
-then everyday "Can I…?" questions, then notable rules, and only then a full
-searchable browse ("dig deeper") — this in-town browse/search (`LawBrowser`) is
-the site's only free-text search. Two site-level views round it out: `/rankings`
-(pilots on the national scale) and `/legalese` (a playful opacity meter). Not
-legal advice; the text is
+"what are the local laws where I live?" — then a lead **dataset explainer +
+stats** and the **"not legal advice"** disclaimer up front, then a small "or
+explore" row of cards linking to the other surfaces. Each jurisdiction page opens
+with a plain-English **report card** (`PlacePortrait`: a one-line summary plus
+three spelled-out **static spectrum bars** — Plain↔Dense, Hands-off↔Regulates-
+conduct, Bright-line↔Left-to-officials — a filled gradient with a caret pointer,
+deliberately NOT a slider since it isn't draggable; each has a worked explanation
+of what the dimension means and an expander to the real laws), then everyday "Can I…?"
+questions with the **full law text inline** (`CommonQuestions`), then notable
+rules, then a full searchable browse ("dig deeper", `LawBrowser`, the site's only
+free-text search), and finally the topic mix (`TopicFingerprint`) demoted to the
+**bottom**. Site-level surfaces: `/map` ("Explore cities" — the national map plus
+the search-first `JurisdictionPicker`), `/spectrum` ("How laws differ" — the two
+`SpectrumExplorer` islands with a clear explanation of the scoring), and
+`/rankings` (places on the national scale). Not legal advice; the text is
 OCR'd, every label/score is a machine estimate, and plain-language translations
 are AI paraphrases, not the law.
 
@@ -53,7 +56,7 @@ jurisdictions). Download once with `huggingface_hub`
 # rehearse on a slice first (writes ONLY per-jurisdiction files to data-build/;
 # committed showcase files are left untouched):
 python3 pipeline/build.py --source 'locus-data/data/*.parquet' --limit 50
-# full run (regenerates index/baselines/legalese/spectrum + all per-juris files):
+# full run (regenerates index/baselines/spectrum + all per-juris files):
 python3 pipeline/build.py --source 'locus-data/data/*.parquet'
 bun run data:geocode        # adds lat/lon to index.json + exact ZIP→county
 # then upload data-build/ to R2 (see Deploy) and commit the small files.
@@ -94,10 +97,7 @@ they meet only at JSON files in `public/data/`.
      `public/data/<state>/<slug>.json` (portrait + questions + notable + laws) plus
      an `index.json` manifest entry (counts, size, `portraitTeaser`, and
      `dimensions` = per-dimension national percentiles for the ranking page).
-   - **Legalese gallery** (`build_legalese`): collects the most opaque laws across
-     all pilots (capped per jurisdiction), emits `public/data/legalese.json` for
-     the Legalese-o-Meter page.
-   - **Homepage spectra** (`build_spectrum`, in the dependency-free
+   - **Spectrum explorers** (`build_spectrum`, in the dependency-free
      `pipeline/spectrum.py` so the selection rule is shared, not duplicated):
      picks ~20 legible laws evenly spaced across each of opacity/paternalism, one
      per jurisdiction where possible, and emits `public/data/spectrum.json`. The
@@ -108,7 +108,7 @@ they meet only at JSON files in `public/data/`.
 
 2. **Static site** (Astro 6 + React islands + Tailwind v4) — at build time
    `src/lib/data.ts` reads `index.json`/`baselines.json`/etc. (`loadIndex`,
-   `loadBaselines`, `loadLegalese`, `loadSpectrum`) and `src/pages/[state]/[city].astro`
+   `loadBaselines`, `loadSpectrum`) and `src/pages/[state]/[city].astro`
    statically generates one page per jurisdiction via `getStaticPaths`.
    **Build-cost rule:** pages use only **summary** fields from `index.json`;
    `loadJurisdiction()` is gone — never read a per-jurisdiction file at build time
@@ -125,23 +125,30 @@ they meet only at JSON files in `public/data/`.
 
    Site-level surfaces sit on top of the per-jurisdiction pages: the **homepage**
    hero is `FindMyTown` (the primary "what are the laws where I live?" action),
-   then the **search-first** `JurisdictionPicker` (a largest-first shortlist until
-   you type, then name/state filtering capped at ~60 results — it must not render
-   ~2,000 cards), then two `SpectrumExplorer` islands over `spectrum.json`
-   (demoted below the fold as the plain-language showcase — a draggable
-   tick-marked rail per dimension, plain-language ⇄ original toggle; opacity also
-   shows readability facts + a "squint" blur), then a compact dataset explainer.
+   followed by the lead dataset explainer + stats, the disclaimer, and an "or
+   explore" card row. The **search-first** `JurisdictionPicker` (a largest-first
+   shortlist until you type, then name/state filtering capped at ~60 results — it
+   must not render ~2,000 cards) lives on **`/map`** ("Explore cities") under the
+   national map. The two `SpectrumExplorer` islands over `spectrum.json` (a
+   draggable tick-marked rail per dimension, plain-language ⇄ original toggle;
+   opacity also shows readability facts + a "squint" blur) live on **`/spectrum`**
+   ("How laws differ") with an up-front explanation of the scoring.
    There is no global free-text search surface; search is an in-town action in
    `LawBrowser`. `/rankings` (`RankingsTable`)
    places covered jurisdictions on the national distribution per dimension
    (top-100 on the chosen axis; national-percentile framing, never a leaderboard
-   verdict); and `/legalese` (`LegaleseMeter`) is a playful gauge over
-   `legalese.json`. Inside a place page, the topic mix renders as
+   verdict). **State directory pages** live at `/[state]`
+   (`src/pages/[state]/index.astro`, one per state via `getStaticPaths`): fully
+   server-rendered from `index.json` summary fields, they list every covered city
+   + county in that state (grouped, largest-first, with a vanilla-JS name filter)
+   and are reached by clicking the state in a place page's breadcrumb. Inside a
+   place page, the topic mix renders as
    `TopicFingerprint` (`.astro`, server-rendered: per-topic bars vs. the national
-   median share, the fix for the old confusing "more laws of X" copy), and each
-   Place Portrait dimension bar expands into `DimensionLaws` — the town's own laws
-   ranked by that raw z-score. `NationalPositionBar` (shared by the portrait and
-   rankings) shows a place's 0–100 position with a "typical town" (50th) mark.
+   median share, the fix for the old confusing "more laws of X" copy) and is
+   **demoted to the bottom of the page**; each `PlacePortrait` spectrum expands into
+   `DimensionLaws` — the town's own laws
+   ranked by that raw z-score. `NationalPositionBar` (rankings page only now)
+   shows a place's 0–100 position with a "typical town" (50th) mark.
    `LawBrowser` shows place-aware starter chips (`BROWSE_SUGGESTIONS`, filtered to
    terms that actually match locally). Shared dimension labels/direction live in
    `DIMENSION_META` (`topics.ts`); readability math lives in
@@ -149,7 +156,7 @@ they meet only at JSON files in `public/data/`.
    output).
 
 The **small** files in `public/data/` are **committed** (`index.json`,
-`baselines.json`, `legalese.json`, `spectrum.json`, `geo/`; the 19
+`baselines.json`, `spectrum.json`, `geo/`; the 19
 pilot per-jurisdiction files remain too as an offline-dev fallback) so the site
 builds and deploys without running the pipeline; CI never runs it. The **large**
 per-jurisdiction files are NOT committed — at full scale they live in R2 and are

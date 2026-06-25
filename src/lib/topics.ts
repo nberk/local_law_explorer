@@ -91,7 +91,7 @@ export interface Portrait {
 }
 
 // The three verified score dimensions, with the labels every comparative view
-// (Portrait explorer, city ranking, Legalese-o-Meter) shares so wording and
+// (Portrait explorer, city ranking, spectrum page) shares so wording and
 // direction never drift. problem_salience is intentionally absent: its meaning
 // is unverified against the paper (the `verifyCopy` guardrail), so it is never
 // ranked, sorted, or shown. `inverted` dimensions read better flipped (a high
@@ -106,6 +106,17 @@ export interface DimensionMeta {
   mostLabel: string; // the high-raw-score end of the explorer rail
   leastLabel: string; // the low-raw-score end
   note: string; // one-line "what this estimates" caveat
+  // Short labels for the two ends of the place-page gauge (low raw score → high).
+  lowEnd: string;
+  highEnd: string;
+  // CSS gradient (low end → high end) for the static spectrum bar on the place
+  // page. A filled gradient + pointer reads as a spectrum, not a draggable slider.
+  gradient: string;
+  // The "spell it out" copy: what this dimension actually means, in plain words,
+  // with a concrete example. Shown beneath the gauge on the place page so the
+  // reader knows what "denser" or "bright-line" mean before reading the score.
+  question: string; // the human question this dimension answers
+  explain: string;
 }
 
 export const DIMENSION_META: DimensionMeta[] = [
@@ -117,6 +128,12 @@ export const DIMENSION_META: DimensionMeta[] = [
     mostLabel: "Most densely worded",
     leastLabel: "Plainest",
     note: "How densely a law is written. Machine estimate.",
+    lowEnd: "Plain wording",
+    highEnd: "Dense legalese",
+    gradient: "linear-gradient(90deg, #f0efe9, #3d3d35)",
+    question: "How hard is it to read?",
+    explain:
+      "This is about how the law is written, not what it says. Plain laws use short sentences and everyday words. Dense ones pile on long sentences, cross-references, and legal jargon that take real effort to follow.",
   },
   {
     key: "paternalism",
@@ -126,6 +143,12 @@ export const DIMENSION_META: DimensionMeta[] = [
     mostLabel: "Most restrictive of personal conduct",
     leastLabel: "Least restrictive of personal conduct",
     note: "How much a law regulates personal behavior. Machine estimate.",
+    lowEnd: "Leaves you alone",
+    highEnd: "Regulates conduct",
+    gradient: "linear-gradient(90deg, #eef2fb, #243c79)",
+    question: "How much does it tell you what to do?",
+    explain:
+      "This is about how far the law reaches into daily life. At the low end it mostly sets up government and procedures. At the high end it governs everyday behavior — what you keep in your yard, how you treat neighbors, what you can do in public.",
   },
   {
     key: "enforcement_discretion",
@@ -135,6 +158,12 @@ export const DIMENSION_META: DimensionMeta[] = [
     mostLabel: "Most left to officials' judgment",
     leastLabel: "Most spelled out",
     note: "How much enforcement is left to officials' judgment. Machine estimate.",
+    lowEnd: "Bright-line rules",
+    highEnd: "Left to officials",
+    gradient: "linear-gradient(90deg, #eef2fb, #3d63b3)",
+    question: "Are the rules exact, or judgment calls?",
+    explain:
+      "“Bright-line” rules give an exact threshold you can check yourself — “quiet hours start at 10 p.m.” The other end leaves it to an official to decide case by case — “no unreasonable noise.” Neither is automatically better; bright lines are predictable, judgment calls are flexible.",
   },
 ];
 
@@ -231,14 +260,3 @@ export const NOTABLE_REASON_LABEL: Record<string, string> = {
 // often "Other"). Single source of truth for the regex lives here.
 export const BOILERPLATE =
   /(municipal flag|city flag|official flag|corporate seal|city seal|official seal|seal and emblem|coat of arms|\bpennant\b|decorations on public|honorary|commemorat|naming and renaming|municipal device|code revision|numbering of code|references? to (the )?(former|section))/i;
-
-// Best-effort link to the official code (the corpus has no source URLs).
-export function sourceSearchUrl(
-  jurisName: string,
-  stateName: string,
-  law: Pick<Law, "section" | "title">,
-): string {
-  const ref = law.section ? `"${law.section}"` : law.title;
-  const q = `${jurisName} ${stateName} municipal code ${ref}`;
-  return "https://www.google.com/search?q=" + encodeURIComponent(q);
-}

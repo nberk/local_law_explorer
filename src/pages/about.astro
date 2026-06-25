@@ -6,8 +6,8 @@ const { corpus } = loadIndex();
 ---
 
 <Layout
-  title="About the data — Local Law Lookup"
-  description="How Local Law Lookup is built, the LOCUS-v1 corpus it uses, attribution, license, and limitations."
+  title="About the data — Local Law Explorer"
+  description="How Local Law Explorer is built, the LOCUS-v1 corpus it uses, attribution, license, and limitations."
 >
   <section class="max-w-3xl mx-auto px-6 pt-12 pb-4">
     <h1 class="font-display text-4xl font-semibold text-ink-900">
@@ -16,7 +16,7 @@ const { corpus } = loadIndex();
 
     <div class="mt-6 space-y-4 text-[15px] leading-relaxed text-ink-700">
       <p>
-        Local Law Lookup is a free, non-commercial tool for reading the city and
+        Local Law Explorer is a free, non-commercial tool for reading the city and
         county ordinances that shape everyday life. It is built on
         <strong class="text-ink-900">LOCUS-v1</strong>, an open corpus of U.S.
         local law released by researchers at UC Berkeley.
@@ -77,9 +77,10 @@ const { corpus } = loadIndex();
         enough to describe in plain words.
       </p>
       <p>
-        The <strong class="text-ink-900">Common questions</strong> section matches
-        everyday questions to the ordinances whose titles mention them. A keyword
-        match is not a yes-or-no answer; it points you to the rule to read. The
+        The <strong class="text-ink-900">Everyday questions</strong> section matches
+        common questions to the ordinances whose titles mention them, and shows the
+        full text of each. A keyword match is not a yes-or-no answer; it points you
+        to the rule to read. The
         <strong class="text-ink-900">Notable rules</strong> section uses a simple
         text heuristic to surface distinctive subjects (animals, parades, curfews,
         and the like). It matches words, not meaning, so it is a curiosity rather

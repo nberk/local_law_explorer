@@ -9,13 +9,9 @@ import LawCard from "./LawCard";
 export default function DimensionLaws({
   laws,
   meta,
-  jurisName,
-  stateName,
 }: {
   laws: Law[];
   meta: DimensionMeta;
-  jurisName: string;
-  stateName: string;
 }) {
   // Rank by raw z-score, highest first (index 0 = the "most" extreme). Drop laws
   // with no score for this axis (defensive — populated 100% in spot checks).
@@ -80,7 +76,7 @@ export default function DimensionLaws({
       </div>
 
       <div className="mt-2">
-        <LawCard law={current.law} jurisName={jurisName} stateName={stateName} />
+        <LawCard law={current.law} />
       </div>
     </div>
   );

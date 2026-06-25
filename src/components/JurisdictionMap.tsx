@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
 import { loadIndexClient } from "../lib/clientData";
-import { TOPIC_COLOR, type JurisdictionSummary } from "../lib/topics";
+import { type JurisdictionSummary } from "../lib/topics";
 
 // A national map: every covered jurisdiction is a dot at its lat/lon. A sibling
 // to /rankings — same manifest, different view. It uses ONLY index.json (already
@@ -11,25 +11,11 @@ import { TOPIC_COLOR, type JurisdictionSummary } from "../lib/topics";
 // Leaflet is imported dynamically inside the effect (not at module top level) so
 // it never runs during Astro's server render, where `window` is undefined.
 
-// Color a dot by its largest SUBSTANTIVE topic. `Other` is the classifier's junk
-// drawer and wins on raw count for many towns, so including it would paint the
-// map a meaningless grey. When no substantive topic has any laws, return null →
-// a neutral dot that honestly reads as "no clear focus".
-const SUBSTANTIVE = ["Zoning", "Nuisance", "Buildings", "Business"] as const;
-const NEUTRAL = "#c2c2bd";
-
-function dominantTopic(counts: Record<string, number>): string | null {
-  let best: string | null = null;
-  let bestN = 0;
-  for (const t of SUBSTANTIVE) {
-    const n = counts[t] ?? 0;
-    if (n > bestN) {
-      bestN = n;
-      best = t;
-    }
-  }
-  return best;
-}
+// All dots share one color. We deliberately do NOT color by topic: the topic
+// labels are noisy machine estimates and a rainbow map implied a precision the
+// data doesn't have. Dot SIZE (law count) is the only encoded signal; the
+// city-filled / county-ring distinction is shape, not color.
+const DOT_COLOR = "#3d63b3"; // accent-500
 
 // Total law count → radius in px. sqrt compresses an ~50…8,200 range so a tiny
 // town stays visible and a huge one doesn't swallow the map.
@@ -44,21 +30,16 @@ function esc(s: string): string {
   );
 }
 
-function tooltipHtml(j: JurisdictionSummary, topic: string | null): string {
+function tooltipHtml(j: JurisdictionSummary): string {
   const total = (j.counts.total ?? 0).toLocaleString();
-  const focus = topic ? `Mostly ${topic.toLowerCase()}` : "No clear focus";
-  const headline = j.portraitTeaser?.headline
-    ? `<div style="color:#6b6b64;margin-top:2px">${esc(j.portraitTeaser.headline)}</div>`
-    : "";
+  const kind = j.type === "county" ? "county" : "city";
   const rough = j.portraitTeaser?.lowConfidence
     ? `<div style="color:#a8a8a0;margin-top:2px">few laws — rough estimate</div>`
     : "";
   return (
     `<div style="font-weight:600;color:#27272a">${esc(j.name)}` +
     `<span style="color:#a8a8a0;font-weight:400"> · ${esc(j.state)}</span></div>` +
-    headline +
-    `<div style="color:#6b6b64;margin-top:3px">${total} laws · ` +
-    `${esc(focus)} <span style="color:#a8a8a0">(est.)</span></div>` +
+    `<div style="color:#6b6b64;margin-top:3px">${total} laws on record · ${kind}</div>` +
     rough +
     `<div style="color:#9a9a92;margin-top:3px;font-size:11px">click to open →</div>`
   );
@@ -117,20 +98,18 @@ export default function JurisdictionMap() {
         ).addTo(map);
 
         for (const j of pts) {
-          const topic = dominantTopic(j.counts);
-          const color = topic ? TOPIC_COLOR[topic] : NEUTRAL;
           const r = radius(j.counts.total ?? 0);
           const isCounty = j.type === "county";
           const m = L.circleMarker([j.lat as number, j.lon as number], {
             radius: r,
-            color,
+            color: DOT_COLOR,
             weight: isCounty ? 1.6 : 0.6,
             // Counties = hollow rings (an area, not a point); cities = filled.
-            fillColor: color,
+            fillColor: DOT_COLOR,
             fillOpacity: isCounty ? 0 : 0.62,
             opacity: isCounty ? 0.95 : 0.85,
           });
-          m.bindTooltip(tooltipHtml(j, topic), {
+          m.bindTooltip(tooltipHtml(j), {
             direction: "top",
             offset: [0, -r],
             opacity: 1,
@@ -179,36 +158,33 @@ export default function JurisdictionMap() {
         )}
       </div>
 
-      {/* Legend. Topic colors mirror the rest of the site (TOPIC_COLOR). */}
+      {/* Legend. One color for every dot; size and shape carry the meaning. */}
       <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-ink-600">
-        <span className="font-medium text-ink-700">Dot color (est. focus):</span>
-        {SUBSTANTIVE.map((t) => (
-          <span key={t} className="inline-flex items-center gap-1.5">
-            <span
-              className="inline-block h-3 w-3 rounded-full"
-              style={{ background: TOPIC_COLOR[t] }}
-            />
-            {t}
-          </span>
-        ))}
         <span className="inline-flex items-center gap-1.5">
           <span
             className="inline-block h-3 w-3 rounded-full"
-            style={{ background: NEUTRAL }}
+            style={{ background: DOT_COLOR, opacity: 0.62 }}
           />
-          No clear focus
-        </span>
-      </div>
-      <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-ink-600">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded-full bg-ink-400" />
           City (filled)
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded-full border-[1.5px] border-ink-400" />
+          <span
+            className="inline-block h-3 w-3 rounded-full border-[1.5px]"
+            style={{ borderColor: DOT_COLOR }}
+          />
           County (ring)
         </span>
-        <span className="text-ink-500">Dot size = number of laws (estimated).</span>
+        <span className="inline-flex items-center gap-1.5 text-ink-500">
+          <span
+            className="inline-block h-1.5 w-1.5 rounded-full"
+            style={{ background: DOT_COLOR, opacity: 0.62 }}
+          />
+          <span
+            className="inline-block h-3.5 w-3.5 rounded-full"
+            style={{ background: DOT_COLOR, opacity: 0.62 }}
+          />
+          Bigger = more laws on record
+        </span>
         {status === "ready" && (
           <span className="text-ink-400">{shown.toLocaleString()} places shown.</span>
         )}

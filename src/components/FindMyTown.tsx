@@ -91,23 +91,19 @@ function ResultCard({
         <div className="mt-3">
           <TopicBar counts={jur.counts} />
         </div>
-        {jur.portraitTeaser && (
-          <div className="mt-2 text-[12px] italic text-ink-600">
-            {jur.portraitTeaser.headline}
-          </div>
-        )}
-        <div className="mt-2 flex items-center justify-between text-[11.5px] text-ink-500">
-          <span>
-            {approxCounty
-              ? "Nearest county we cover"
-              : kind === "county"
-                ? "Your county"
-                : near.withinCoverage
-                  ? "Your city"
-                  : "Closest city"}{" "}
-            · {SOURCE_LABEL[source]}
-          </span>
-          <span className="text-ink-400">open →</span>
+        <div className="mt-3 text-[11.5px] text-ink-500">
+          {approxCounty
+            ? "Nearest county we cover"
+            : kind === "county"
+              ? "Your county"
+              : near.withinCoverage
+                ? "Your city"
+                : "Closest city"}{" "}
+          · {SOURCE_LABEL[source]}
+        </div>
+        <div className="mt-2 inline-flex items-center gap-1 text-[13px] font-medium text-accent-600 transition group-hover:text-accent-700">
+          See this town’s laws
+          <span aria-hidden="true">→</span>
         </div>
       </a>
       {approxCounty && (
