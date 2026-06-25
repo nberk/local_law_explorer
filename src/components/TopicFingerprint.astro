@@ -1,8 +1,9 @@
 ---
-// What a town's code is *about*, made comparative. Each topic is a bar (this
-// town's share of its code) with a tick marking the typical U.S. town's share
-// for that topic — so "heavy on zoning, light on nuisance" is visible at a
-// glance instead of buried in percentile prose. Server-rendered (no JS).
+// What a town's code is *about*. A donut shows the composition — each topic's
+// share of this town's code reads instantly as a wedge. The comparison a donut
+// can't carry (is this town heavy or light on a topic vs. a typical U.S. town?)
+// is laid onto the legend: each row shows the town's share, the typical share,
+// and an over/under cue. Server-rendered (no JS), pure SVG.
 import { TOPICS, TOPIC_COLOR } from "../lib/topics";
 
 interface Props {
@@ -22,59 +23,112 @@ const rows = TOPICS.map((t) => {
   .filter((r) => r.n > 0)
   .sort((a, b) => b.share - a.share);
 
-// Shared x-scale so bar lengths are comparable across topics.
-const scale = Math.max(0.0001, ...rows.flatMap((r) => [r.share, r.median]));
-const w = (v: number) => `${Math.min(100, (v / scale) * 100)}%`;
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 
-function cue(ratio: number): string {
-  if (ratio >= 1.4) return "more than typical";
-  if (ratio <= 0.7) return "less than typical";
-  return "about typical";
+function cue(ratio: number): { label: string; glyph: string; cls: string } {
+  if (ratio >= 1.4)
+    return { label: "more than typical", glyph: "▲", cls: "text-accent-700" };
+  if (ratio <= 0.7)
+    return { label: "less than typical", glyph: "▼", cls: "text-ink-500" };
+  return { label: "about typical", glyph: "•", cls: "text-ink-400" };
 }
+
+// Donut geometry. Arcs are drawn as dashed strokes on concentric circles,
+// rotated so the first wedge starts at 12 o'clock.
+const size = 176;
+const stroke = 30;
+const r = (size - stroke) / 2;
+const C = 2 * Math.PI * r;
+const cx = size / 2;
+const cy = size / 2;
+let acc = 0;
+const arcs = rows.map((row) => {
+  const len = row.share * C;
+  const arc = {
+    color: TOPIC_COLOR[row.topic],
+    dash: len,
+    offset: -acc * C,
+  };
+  acc += row.share;
+  return arc;
+});
 ---
 
-<div>
-  <div class="flex flex-wrap items-baseline justify-end gap-2">
-    <p class="text-[11px] text-ink-400">
-      bar = share of this town’s code · <span class="text-ink-500">│</span> = typical
-      U.S. town
-    </p>
-  </div>
-
-  <div class="mt-3 space-y-2">
-    {
-      rows.map((r) => (
-        <div class="grid grid-cols-[88px_1fr] items-center gap-3 sm:grid-cols-[110px_1fr]">
-          <div class="flex items-center gap-1.5 text-[12.5px] text-ink-700">
-            <span
-              class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
-              style={`background:${TOPIC_COLOR[r.topic]}`}
+<div class="flex flex-col items-start gap-7 sm:flex-row sm:items-center sm:gap-9">
+  <!-- donut: this town's composition -->
+  <div class="relative shrink-0" style={`width:${size}px;height:${size}px`}>
+    <svg
+      viewBox={`0 0 ${size} ${size}`}
+      width={size}
+      height={size}
+      role="img"
+      aria-label="Share of this town's code by topic"
+    >
+      <circle
+        cx={cx}
+        cy={cy}
+        r={r}
+        fill="none"
+        stroke="var(--rule)"
+        stroke-width={stroke}
+      />
+      <g transform={`rotate(-90 ${cx} ${cy})`}>
+        {
+          arcs.map((a) => (
+            <circle
+              cx={cx}
+              cy={cy}
+              r={r}
+              fill="none"
+              stroke={a.color}
+              stroke-width={stroke}
+              stroke-dasharray={`${a.dash} ${C - a.dash}`}
+              stroke-dashoffset={a.offset}
             />
-            <span class="truncate">{r.topic}</span>
-          </div>
-
-          <div class="flex items-center gap-3">
-            <div class="relative h-3.5 flex-1 rounded bg-ink-50">
-              {/* this town's share */}
-              <div
-                class="absolute left-0 top-0 h-3.5 rounded"
-                style={`width:${w(r.share)};background:${TOPIC_COLOR[r.topic]}`}
-              />
-              {/* typical-town reference tick */}
-              <div
-                class="absolute top-1/2 h-5 w-px -translate-x-1/2 -translate-y-1/2 bg-ink-900/55"
-                style={`left:${w(r.median)}`}
-                title={`Typical U.S. town: ${pct(r.median)}`}
-              />
-            </div>
-            <div class="w-[116px] shrink-0 text-right text-[11.5px]">
-              <span class="font-mono text-ink-800">{pct(r.share)}</span>
-              <span class="ml-1 text-ink-400">{cue(r.ratio)}</span>
-            </div>
-          </div>
-        </div>
-      ))
-    }
+          ))
+        }
+      </g>
+    </svg>
+    <div
+      class="absolute inset-0 flex flex-col items-center justify-center text-center"
+    >
+      <span class="font-mono text-[19px] leading-none text-ink-900"
+        >{counts.total.toLocaleString()}</span
+      >
+      <span class="mt-1 text-[10px] uppercase tracking-wider text-ink-400"
+        >laws</span
+      >
+    </div>
   </div>
+
+  <!-- legend: share + comparison to a typical U.S. town -->
+  <ul class="w-full min-w-0 flex-1 space-y-3">
+    {
+      rows.map((row) => {
+        const c = cue(row.ratio);
+        return (
+          <li>
+            <div class="flex items-center gap-2">
+              <span
+                class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
+                style={`background:${TOPIC_COLOR[row.topic]}`}
+              />
+              <span class="flex-1 truncate text-[13px] text-ink-800">
+                {row.topic}
+              </span>
+              <span class="font-mono text-[13px] tabular-nums text-ink-900">
+                {pct(row.share)}
+              </span>
+            </div>
+            <div class="mt-0.5 pl-[18px] text-[11px]">
+              <span class={c.cls}>
+                {c.glyph} {c.label}
+              </span>
+              <span class="text-ink-400"> · typical {pct(row.median)}</span>
+            </div>
+          </li>
+        );
+      })
+    }
+  </ul>
 </div>

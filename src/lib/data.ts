@@ -41,28 +41,3 @@ export interface BaselinesFile {
 export function loadBaselines(): BaselinesFile {
   return JSON.parse(fs.readFileSync(path.join(DATA_DIR, "baselines.json"), "utf-8"));
 }
-
-// Spectrum explorers (their own page): ~20 real laws sampled across a score dimension
-// (opacity, paternalism), each with a hand-authored plain-language translation
-// shown alongside the original text. Built by pipeline/spectrum.py.
-export interface SpectrumLaw {
-  jurisId: string;
-  jurisName: string;
-  state: string;
-  slug: string;
-  title: string;
-  section: string | null;
-  topic: string;
-  score: number; // raw z-score for the dimension (percentile derived client-side)
-  content: string;
-  plain: string | null; // plain-language translation; null until authored
-}
-
-export interface SpectrumFile {
-  generated: string;
-  spectra: Record<string, { key: string; laws: SpectrumLaw[] }>;
-}
-
-export function loadSpectrum(): SpectrumFile {
-  return JSON.parse(fs.readFileSync(path.join(DATA_DIR, "spectrum.json"), "utf-8"));
-}

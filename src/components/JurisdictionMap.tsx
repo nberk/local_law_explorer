@@ -3,9 +3,9 @@ import "leaflet/dist/leaflet.css";
 import { loadIndexClient } from "../lib/clientData";
 import { type JurisdictionSummary } from "../lib/topics";
 
-// A national map: every covered jurisdiction is a dot at its lat/lon. A sibling
-// to /rankings — same manifest, different view. It uses ONLY index.json (already
-// memoized via loadIndexClient) and never touches the multi-MB per-jurisdiction
+// A national map: every covered jurisdiction is a dot at its lat/lon. It uses
+// ONLY index.json (already memoized via loadIndexClient) and never touches the
+// multi-MB per-jurisdiction
 // R2 files; the heavy fetch happens on the place page after a dot is clicked.
 //
 // Leaflet is imported dynamically inside the effect (not at module top level) so

@@ -59,7 +59,7 @@ const medians = Object.fromEntries(
   </section>
 
   <section class="max-w-5xl mx-auto px-6 pt-4 pb-8">
-    <JurisdictionModules client:load jurisId={j.id} />
+    <JurisdictionModules client:load jurisId={j.id} name={j.name} />
 
     <!-- topic composition vs. the typical US town (demoted to the bottom: most
          readers care about the rules, not the share of code by category) -->
@@ -68,9 +68,9 @@ const medians = Object.fromEntries(
         What {j.name}’s code is about
       </h2>
       <p class="mt-1 max-w-2xl text-[13.5px] leading-relaxed text-ink-500">
-        The share of {j.name}’s ordinances in each topic, next to a tick for the
-        typical U.S. town. Topics are noisy machine labels, so read this as a
-        rough shape, not an exact accounting.
+        The share of {j.name}’s ordinances in each topic, with how that share
+        compares to a typical U.S. town. Topics are noisy machine labels, so read
+        this as a rough shape, not an exact accounting.
       </p>
       <div class="mt-4">
         <TopicFingerprint counts={j.counts} medians={medians} />

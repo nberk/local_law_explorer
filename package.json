@@ -10,6 +10,8 @@
     "data:build": "python3 pipeline/build.py",
     "data:geo": "python3 pipeline/build_geo.py",
     "data:geocode": "python3 pipeline/geocode_jurisdictions.py",
+    "reel:studio": "remotion studio remotion/index.ts",
+    "reel": "remotion render remotion/index.ts SizzleSquare out/sizzle-square.mp4",
     "astro": "astro"
   },
   "devDependencies": {
@@ -25,8 +27,12 @@
     "typescript": "^6.0.3"
   },
   "dependencies": {
+    "@remotion/cli": "^4.0.483",
+    "@remotion/google-fonts": "^4.0.483",
+    "@remotion/transitions": "^4.0.483",
     "leaflet": "^1.9.4",
     "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "react-dom": "^19.2.6",
+    "remotion": "^4.0.483"
   }
 }
