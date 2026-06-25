@@ -41,12 +41,11 @@ import spectrum  # local module (pipeline/ is on sys.path when run as a script)
 # discovers it from the corpus. The old 19-pilot list lived here.
 JURIS_TYPES = ("cities", "counties")
 
-# Curated "featured" jurisdictions that source the homepage spectrum explorers.
+# Curated "featured" jurisdictions that source the spectrum explorers.
 # The spectrum carries HAND-AUTHORED plain-language translations (in the committed
 # spectrum.json); letting it draw from all ~2,000 jurisdictions would reselect new
 # laws and silently drop those translations. So the showcase stays sourced from
-# this fixed set (the original pilots) even at full scale. The /legalese gallery
-# has no hand-authored content, so it expands to the whole corpus.
+# this fixed set (the original pilots) even at full scale.
 FEATURED = {
     "il/chicago", "ca/san_diego", "ca/san_francisco", "mi/detroit", "wa/seattle",
     "or/portland", "md/baltimore", "ga/atlanta", "la/new_orleans", "hi/honolulu",
@@ -690,27 +689,6 @@ def summary_dimensions(portrait):
     return out
 
 
-# Legalese-o-Meter gallery: the most opaque laws across the pilots, capped per
-# jurisdiction so the "show me another baffling law" tour spans different towns
-# instead of one big-city code dominating the list.
-LEGALESE_N, LEGALESE_PER_JURIS, LEGALESE_CONTENT_CAP = 60, 6, 8000
-
-
-def build_legalese(pool):
-    pool = sorted(pool, key=lambda c: -c["opacity"])
-    seen, picked = {}, []
-    for c in pool:
-        if seen.get(c["jurisId"], 0) >= LEGALESE_PER_JURIS:
-            continue
-        seen[c["jurisId"]] = seen.get(c["jurisId"], 0) + 1
-        # Cap the wall of text: the densest laws can be 25k-char OCR run-ons, and
-        # 8k chars is still plenty to demonstrate density and compute readability.
-        picked.append({**c, "content": c["content"][:LEGALESE_CONTENT_CAP]})
-        if len(picked) >= LEGALESE_N:
-            break
-    return picked
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument(
@@ -719,7 +697,7 @@ def main():
         help="Parquet glob (remote hf:// default, or a local path).",
     )
     ap.add_argument("--out", default="public/data",
-                    help="Small shared files (index/baselines/legalese/spectrum).")
+                    help="Small shared files (index/baselines/spectrum).")
     ap.add_argument("--juris-out", default="data-build",
                     help="Per-jurisdiction JSON dir (gitignored; uploaded to R2).")
     ap.add_argument("--limit", type=int, default=None,
@@ -730,7 +708,7 @@ def main():
 
     # A "full run" is what regenerates the committed showcase files. A --limit /
     # --only slice writes ONLY per-jurisdiction files (to --juris-out) so a
-    # rehearsal never clobbers the curated index/baselines/legalese/spectrum.
+    # rehearsal never clobbers the curated index/baselines/spectrum.
     full_run = not (args.limit or args.only)
     out = Path(args.out)
     juris_out = Path(args.juris_out)
@@ -762,7 +740,6 @@ def main():
     print("Building %d jurisdiction(s)%s ..." % (len(jurs), note))
 
     manifest = []
-    legalese_pool = []
     spectrum_pool = []
     sizes = []        # (id, bytes) for the final size report
     truncated = []    # ids whose content we had to truncate to fit the cap
@@ -817,17 +794,7 @@ def main():
         opacities = sorted(l["scores"]["opacity"] for l in out_laws if l["scores"]["opacity"] is not None)
         median_op = opacities[len(opacities) // 2] if opacities else None
 
-        # Legalese: contribute only this jurisdiction's most opaque laws (capped),
-        # content truncated up front so the global pool stays small at full scale.
-        for law in sorted((l for l in out_laws if l["scores"]["opacity"] is not None),
-                          key=lambda l: -l["scores"]["opacity"])[:LEGALESE_PER_JURIS]:
-            legalese_pool.append({
-                "jurisId": jid, "jurisName": name, "state": state.upper(), "slug": slug,
-                "title": law["title"], "section": law["section"], "topic": law["topic"],
-                "opacity": law["scores"]["opacity"],
-                "content": (law["content"] or "")[:LEGALESE_CONTENT_CAP],
-            })
-        # Spectrum: only the curated FEATURED set feeds the homepage explorers, so
+        # Spectrum: only the curated FEATURED set feeds the spectrum explorers, so
         # their hand-authored translations survive a full rollout (see FEATURED).
         if jid in FEATURED:
             for law in out_laws:
@@ -888,12 +855,7 @@ def main():
           % (len(manifest), n_cities, n_counties))
 
     if full_run:
-        legalese = build_legalese(legalese_pool)
-        (out / "legalese.json").write_text(
-            json.dumps({"generated": "2026-06-23", "laws": legalese}, ensure_ascii=False))
-        print("Wrote %s (%d laws)" % (out / "legalese.json", len(legalese)))
-
-        # Homepage spectra. build_spectrum reads the existing spectrum.json and
+        # Spectrum explorers. build_spectrum reads the existing spectrum.json and
         # carries forward hand-authored translations, so a rebuild never clobbers
         # them (only newly-selected laws come back with plain=null).
         spectrum_doc = spectrum.build_spectrum(spectrum_pool, str(out / "spectrum.json"))

@@ -1,8 +1,7 @@
 // Deterministic readability facts computed from the raw ordinance text. These
 // are plain arithmetic on the text itself (not model output), so showing them
-// stays inside the "original text only, no rewrites" rule (plan doc D1) while
-// explaining *why* a law reads as dense. Paired with the opacity score (a model
-// estimate) on the Legalese-o-Meter.
+// explains *why* a law reads as dense. Paired with the opacity score (a model
+// estimate) in the spectrum explorer.
 
 export interface Readability {
   words: number;

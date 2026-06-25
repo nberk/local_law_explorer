@@ -1,21 +1,17 @@
 import { useState } from "react";
-import { TOPIC_BADGE, OPACITY_FLAG, sourceSearchUrl, type Law } from "../lib/topics";
+import { TOPIC_BADGE, OPACITY_FLAG, type Law } from "../lib/topics";
 
 const SNIPPET = 360;
 
 // A single ordinance card: topic badge, section id, optional density flag, the
-// cleaned title, a (truncated, expandable) snippet, and a best-effort link to
-// the official code. Shared by the law browser and the Notable Rules module.
+// cleaned title, and the (truncated, expandable) verbatim text. Shared by the
+// law browser and the Notable Rules module.
 export default function LawCard({
   law,
-  jurisName,
-  stateName,
   tag,
   highlight = false,
 }: {
   law: Law;
-  jurisName: string;
-  stateName: string;
   tag?: string; // optional category chip (e.g. the Notable Rules reason)
   highlight?: boolean; // emphasize when arrived at via a deep link from search
 }) {
@@ -63,24 +59,16 @@ export default function LawCard({
       <p className="mt-1.5 whitespace-pre-line text-[14px] leading-relaxed text-ink-700">
         {text}
       </p>
-      <div className="mt-2.5 flex items-center gap-4 text-[12px]">
-        {long && (
+      {long && (
+        <div className="mt-2.5 text-[12px]">
           <button
             onClick={() => setOpen((o) => !o)}
-            className="text-ink-500 transition hover:text-ink-900"
+            className="text-accent-600 transition hover:text-accent-700"
           >
             {open ? "Show less" : "Show full text"}
           </button>
-        )}
-        <a
-          href={sourceSearchUrl(jurisName, stateName, law)}
-          target="_blank"
-          rel="noopener"
-          className="text-accent-600 transition hover:text-accent-700"
-        >
-          Find in official code →
-        </a>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

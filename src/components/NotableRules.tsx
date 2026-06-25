@@ -12,12 +12,10 @@ export default function NotableRules({
   notable,
   laws,
   name,
-  stateName,
 }: {
   notable: NotableRef[];
   laws: Law[];
   name: string;
-  stateName: string;
 }) {
   const byId = new Map(laws.map((l) => [l.id, l]));
   const refs = notable
@@ -41,8 +39,6 @@ export default function NotableRules({
           <LawCard
             key={law.id}
             law={law}
-            jurisName={name}
-            stateName={stateName}
             tag={NOTABLE_REASON_LABEL[reason] ?? reason}
           />
         ))}

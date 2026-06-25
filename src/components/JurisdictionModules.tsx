@@ -42,21 +42,14 @@ export default function JurisdictionModules({ jurisId }: { jurisId: string }) {
       <PlacePortrait
         portrait={data.portrait}
         name={data.name}
-        stateName={data.stateName}
         laws={data.laws}
       />
       <CommonQuestions
         questions={data.questions}
         laws={data.laws}
         name={data.name}
-        stateName={data.stateName}
       />
-      <NotableRules
-        notable={data.notable}
-        laws={data.laws}
-        name={data.name}
-        stateName={data.stateName}
-      />
+      <NotableRules notable={data.notable} laws={data.laws} name={data.name} />
 
       <section className="mt-12 border-t border-[var(--rule)] pt-8">
         <h2 className="font-display text-[20px] font-semibold text-ink-900">

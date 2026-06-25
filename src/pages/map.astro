@@ -1,38 +1,60 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import JurisdictionMap from "../components/JurisdictionMap.tsx";
+import JurisdictionPicker from "../components/JurisdictionPicker.tsx";
+import { loadIndex } from "../lib/data";
+
+const { corpus } = loadIndex();
+const coveredCount = corpus.cities + corpus.counties;
 ---
 
 <Layout
-  title="Map of local law — Local Law Lookup"
-  description="Every covered US city and county as a dot, colored by what its local law is mostly about and sized by how much there is. Machine estimates, not verdicts. Not legal advice."
+  title="Explore cities — Local Law Explorer"
+  description="Every covered US city and county on a map, plus a searchable list of the largest places. Open any one to see how its local law is written and what it covers. Not legal advice."
 >
-  <section class="max-w-6xl mx-auto px-6 pt-12 pb-12">
+  <section class="max-w-6xl mx-auto px-6 pt-12">
     <p class="font-mono text-[11px] uppercase tracking-wider text-ink-500">
-      Map
+      Explore cities
     </p>
     <h1 class="mt-2 font-display text-4xl font-semibold text-ink-900">
-      Local law across the country
+      Explore cities across the country
     </h1>
     <p class="mt-3 max-w-3xl text-[15px] leading-relaxed text-ink-600">
-      Each dot is one of the ~2,287 U.S. cities and counties in the LOCUS corpus,
-      placed at its rough center. Color shows what local law is mostly about
-      there; dot size shows how much of it there is. Click a dot to open that
-      place. Both estimates come from the LOCUS models.
+      Each dot is one of the {coveredCount.toLocaleString()} U.S. cities and
+      counties in the LOCUS corpus, placed at its rough center. Bigger dots have
+      more laws on record. Click a dot — or pick a place from the list below — to
+      open it.
     </p>
     <div
       class="mt-4 max-w-3xl rounded-lg border border-ink-100 bg-ink-50 px-4 py-3 text-[12.5px] text-ink-600 leading-relaxed"
     >
-      Topic colors and sizes are machine estimates, shown as a topic mix, not
-      verdicts. Text is OCR'd and labels are noisy.
+      Dot size is an estimate of how much law is on record, not how big the town
+      is. Text is OCR’d and labels are noisy.
       <span class="font-medium text-ink-800">Not legal advice.</span>
-      Prefer a list? See the
-      <a class="text-accent-700 underline" href="/rankings">rankings</a> or
-      <a class="text-accent-700 underline" href="/">find your town</a>.
     </div>
 
     <div class="mt-7">
       <JurisdictionMap client:load />
+    </div>
+  </section>
+
+  <!-- pick a specific place (moved here from the homepage) -->
+  <section class="max-w-6xl mx-auto px-6 pt-14 pb-12">
+    <p class="font-mono text-[11px] uppercase tracking-wider text-ink-500">
+      Or pick from the list
+    </p>
+    <h2
+      class="mt-2 font-display text-2xl md:text-3xl font-semibold text-ink-900 leading-tight"
+    >
+      Already know the town?
+    </h2>
+    <p class="mt-2 max-w-2xl text-[15px] leading-relaxed text-ink-600">
+      Search any of the {coveredCount.toLocaleString()} covered cities and
+      counties. Each opens with a plain-English snapshot of how it governs, then
+      everyday questions, notable rules, and the full code to browse.
+    </p>
+    <div class="mt-6">
+      <JurisdictionPicker client:load />
     </div>
   </section>
 </Layout>
