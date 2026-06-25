@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { type JurisdictionSummary } from "../lib/topics";
 import { loadIndexClient } from "../lib/clientData";
 import { nearestByType, formatMiles, type NearestResult } from "../lib/geo";
-import TopicBar from "./TopicBar";
+import TopicCounts from "./TopicCounts";
 
 // Lazy-loaded ZIP → [lat, lon, countyId?] table (US only). Only fetched when a
 // user actually types a ZIP. The optional third element is the id of the county
@@ -89,7 +89,7 @@ function ResultCard({
           )}
         </div>
         <div className="mt-3">
-          <TopicBar counts={jur.counts} />
+          <TopicCounts counts={jur.counts} />
         </div>
         <div className="mt-3 text-[11.5px] text-ink-500">
           {approxCounty

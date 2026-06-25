@@ -15,45 +15,31 @@ const stats = [
 ---
 
 <Layout>
-  <!-- hero: find your town -->
+  <!-- hero: headline + dataset explainer + stats -->
   <section class="max-w-7xl mx-auto px-6 pt-14 pb-2">
     <h1
       class="font-display text-4xl md:text-5xl font-semibold text-ink-900 leading-[1.05] max-w-3xl"
     >
       The local laws where you live, in plain sight.
     </h1>
-    <p class="mt-4 max-w-2xl text-[16px] leading-relaxed text-ink-600">
-      City and county ordinances govern noise, pets, fences, permits, and
-      starting a business — public, but scattered and hard to read. Start with
-      your own town.
-    </p>
-
-    <div class="mt-7">
-      <FindMyTown client:load />
-    </div>
-  </section>
-
-  <!-- what this is: the dataset, as the lead context -->
-  <section class="max-w-7xl mx-auto px-6 pt-16">
     <div class="max-w-3xl">
-      <p class="font-mono text-[11px] uppercase tracking-wider text-ink-500">
-        What this is
+      <p class="mt-4 text-[16px] leading-relaxed text-ink-600">
+        City and county ordinances govern noise, pets, fences, permits, and
+        starting a business. They are public, but among the most fragmented law
+        in the United States: there is no central index, and every town’s code
+        lives on a different site or in a PDF, in its own format.
       </p>
-      <h2
-        class="mt-2 font-display text-2xl md:text-3xl font-semibold text-ink-900 leading-tight"
-      >
-        The most scattered law in America, gathered in one place.
-      </h2>
-      <p class="mt-3 text-[15px] leading-relaxed text-ink-600">
-        Local ordinances are the most fragmented body of law in the United
-        States. There is no central index. Every town’s code lives on a
-        different site or in a PDF, in its own format. This site is a viewer for
-        <strong class="text-ink-800">LOCUS</strong>, an open dataset released in
-        <strong class="text-ink-800">June 2026</strong> that gathered these
-        codes, read them with OCR, and labeled every provision into one uniform
-        table. We don’t write or change the law — we render a readable page for
-        every one of the {coveredCount.toLocaleString()} cities and counties in
-        it.
+      <p class="mt-3 text-[16px] leading-relaxed text-ink-600">
+        <strong class="text-ink-800">LOCUS</strong> is an open dataset, released
+        in <strong class="text-ink-800">June 2026</strong> by researchers Denis
+        Peskoff, Joe Barrow, Christopher Vu, and Diag Davenport. They gathered
+        those codes, read them with OCR, and labeled every provision into one
+        uniform table.
+      </p>
+      <p class="mt-3 text-[16px] leading-relaxed text-ink-600">
+        This site is a view on top of that dataset. It does not compile the data
+        or write the law; it renders a readable page for every one of the {coveredCount.toLocaleString()}
+        cities and counties LOCUS covers.
       </p>
       <p class="mt-2 text-[13px] text-ink-500">
         Source: <a
@@ -95,6 +81,27 @@ const stats = [
       paraphrases, not the law itself. There are no effective dates and coverage
       is partial. Always confirm against your jurisdiction’s official code
       before relying on anything here.
+    </div>
+  </section>
+
+  <!-- find your town: the core action -->
+  <section class="max-w-7xl mx-auto px-6 pt-14">
+    <div class="max-w-3xl">
+      <p class="font-mono text-[11px] uppercase tracking-wider text-ink-500">
+        Start here
+      </p>
+      <h2
+        class="mt-2 font-display text-2xl md:text-3xl font-semibold text-ink-900 leading-tight"
+      >
+        Find your town.
+      </h2>
+      <p class="mt-3 text-[15px] leading-relaxed text-ink-600">
+        Start with the place you live and read its real ordinances — the noise
+        rules, the permit lists, the fence heights.
+      </p>
+    </div>
+    <div class="mt-7">
+      <FindMyTown client:load />
     </div>
   </section>
 
