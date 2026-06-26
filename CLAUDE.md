@@ -10,10 +10,11 @@ ordinary people. Live at https://locallaw.pages.dev. The **homepage** leads with
 **"find your town"** (`FindMyTown`) as the hero — the core job-to-be-done is
 "what are the local laws where I live?" — the finder sits **at the top**
 (headline "Know your local laws." + `FindMyTown`), so the interactive action is
-above-the-fold and the prose is out of the way. Below it: the fuller **dataset
-explainer** at `#about`, then the **stats** grid ("the dataset, in numbers"), and
-last of all the
-**"not legal advice"** disclaimer box. Each jurisdiction page opens
+above-the-fold and the prose is out of the way. Below it: three
+**featured-topic cards** (dangerous dogs, fireworks, backyard chickens) that link
+into the `/patterns` explorer (added 2026-06-26, replacing the old "the dataset,
+in numbers" stats grid), then the **dataset explainer** at `#about`, and last of
+all the **"not legal advice"** disclaimer box. Each jurisdiction page opens
 with a **prominent search box** (`TopSearch`, inside `JurisdictionModules`: a
 clearly-labeled "Search <place>'s laws" bar at the very top so it's obvious up
 front that every rule is searchable — it doesn't search itself, it forwards the
@@ -32,7 +33,12 @@ the site's only free-text search), and finally the topic mix (`TopicFingerprint`
 demoted to the **bottom**. (A "Notable rules" section — a text-only
 distinctiveness heuristic — was **removed on 2026-06-25** as not meaningful; the
 pipeline still emits a `notable` array but nothing displays it, and the
-`NotableRules` component + `NOTABLE_REASON_LABEL`/`NotableRef` were deleted.) The only site-level surface is `/map` ("Explore cities" — the
+`NotableRules` component + `NOTABLE_REASON_LABEL`/`NotableRef` were deleted.) Each
+town page also closes with a **"The bigger picture"** strip (in `JurisdictionModules`):
+chips for the `/patterns` topics that town actually regulates (title-matched
+client-side), linking out to `/patterns#<topic>`. Site-level surfaces:
+**`/patterns`** (the cross-jurisdiction "field notes" explorer — see below) and
+**`/map`** ("Explore cities" — the
 national map plus the search-first `JurisdictionPicker`). (A `/spectrum` ("How
 laws differ") page with two `SpectrumExplorer` islands was **removed on
 2026-06-25** — see `docs/remove-spectrum.md`.) Not legal
@@ -49,6 +55,29 @@ The committed data is still the 19 pilots until the one-time full build + R2
 upload is run (the "coordinate later" step). The homepage picker is search-first
 and "find my town" returns the nearest **city and county**.
 
+**Patterns explorer (`/patterns`, added 2026-06-26 — see
+`docs/patterns-integration.md`):** a cross-jurisdiction "field notes" view. The
+town pages are the *vertical* layer ("what are the laws in MY town?"); this is the
+*horizontal* layer ("how does local law work across towns?"). Three sections, all
+React islands sharing one memoized fetch of the committed
+`public/data/patterns.json` (built by `scripts/build_patterns.py` /
+`bun run data:patterns`): **§01 the breadth** (`BreadthExplorer` — 47 subjects
+ranked by how many city codes carry a rule, tiered + category-filtered; tap a row
+for example towns, and each town tile links to `/{state}/{city}?q=<term>` —
+`JurisdictionModules` reads that `?q=` on mount to seed `LawBrowser`, so you land
+on the relevant law); **§02 patterns of approaches** (`ApproachExplorer` — topic
+tabs + a horizontal **swipe rail** of real ordinances, each a plain-English AI
+paraphrase with a "show actual law" toggle to verbatim OCR text; deep-links like
+`/patterns#noise` preselect a topic); **§03 regional** (`RegionalExplorer` — a US
+**choropleth map** as hero over `public/data/us-state-paths.json`, precomputed by
+`scripts/build-map-paths.mjs` / `bun run data:map` so no map lib ships to the
+client, plus a sample-weighted four-region rollup). Shared types/loaders live in
+`src/lib/patternsData.ts`. `build_patterns.py` resolves each example-town name to
+its LOCUS id against `index.json` (99% resolve; the rest stay plain text). The
+explorer and the town-page "bigger picture" strip form a **loop** between the two
+layers. Build-only devDeps `d3-geo`, `topojson-client`, `us-atlas` exist solely
+for the map precompute.
+
 ## Commands
 
 ```bash
@@ -59,6 +88,8 @@ bun run preview             # serve the built dist/
 bun run data:build          # regenerate per-jurisdiction JSON (see pipeline below)
 bun run data:geo            # rebuild the ZIP→coords table for "Find my town" (needs: pip install certifi)
 bun run data:geocode        # write lat/lon onto each jurisdiction + ZIP→county (needs: pip install certifi)
+bun run data:patterns       # rebuild public/data/patterns.json (the /patterns explorer data)
+bun run data:map            # rebuild public/data/us-state-paths.json (the regional choropleth paths)
 bun run reel:studio         # open Remotion Studio to preview/tweak the social sizzle reel
 bun run reel                # render the sizzle reel → out/sizzle-square.mp4 (see docs/sizzle-reel.md)
 ```
@@ -389,3 +420,7 @@ laws differ" page (its `SpectrumExplorer`/`readability.ts`/`loadSpectrum`).
 names ("Newyorkcity" → "New York City").
 `docs/sizzle-reel.md` documents the Remotion social promo video under `remotion/`
 (`bun run reel`), a stand-alone asset that doesn't touch the Astro site.
+`docs/patterns-integration.md` records the 2026-06-26 build of the `/patterns`
+cross-jurisdiction explorer (breadth, swipe-rail approaches, regional map +
+rollup), the homepage featured-topics hook, the `?q=` town deep-links, and the
+`build_patterns.py` / `build-map-paths.mjs` data builders.

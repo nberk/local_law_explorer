@@ -1,0 +1,121 @@
+---
+import Layout from "../layouts/Layout.astro";
+import BreadthExplorer from "../components/BreadthExplorer.tsx";
+import ApproachExplorer from "../components/ApproachExplorer.tsx";
+import RegionalExplorer from "../components/RegionalExplorer.tsx";
+import { readFileSync } from "node:fs";
+
+const nCities: number = JSON.parse(
+  readFileSync("public/data/patterns.json", "utf8"),
+).nCities;
+
+const sections = [
+  { id: "breadth", n: "01", nav: "What cities regulate" },
+  { id: "approaches", n: "02", nav: "Different approaches" },
+  { id: "regional", n: "03", nav: "Where it varies" },
+];
+---
+
+<Layout
+  title="What's in local law? — Local Law Explorer"
+  description="Field notes on U.S. local ordinances: what cities regulate, how the same rule is written differently from town to town, and how it changes by region. Built on the LOCUS corpus. Not legal advice."
+>
+  <!-- hero -->
+  <section class="max-w-5xl mx-auto px-6 pt-12 pb-2">
+    <p class="font-mono text-[11px] uppercase tracking-wider text-ink-500">
+      Local Law Explorer · field notes
+    </p>
+    <h1
+      class="mt-3 font-display text-4xl md:text-5xl font-semibold text-ink-900 leading-[1.05] max-w-2xl"
+    >
+      What's actually in your local laws?
+    </h1>
+    <p class="mt-4 max-w-2xl text-[16px] leading-relaxed text-ink-600">
+      Cities and counties govern far more of daily life than you would think:
+      your dog, your chickens, your music, your fireworks. Here is what is in the
+      codebooks, where towns agree, and where they part ways.
+    </p>
+  </section>
+
+  <!-- sticky jump-nav -->
+  <nav
+    class="sticky top-14 z-20 mt-8 border-y border-[var(--rule)] bg-[var(--bg)]/85 backdrop-blur"
+  >
+    <div class="max-w-5xl mx-auto px-6 h-11 flex items-center gap-5 text-[13px] overflow-x-auto whitespace-nowrap [scrollbar-width:none] [-ms-overflow-style:none]">
+      {
+        sections.map((s) => (
+          <a
+            href={`#${s.id}`}
+            class="flex shrink-0 items-center gap-1.5 text-ink-500 transition hover:text-ink-900"
+          >
+            <span class="font-mono text-[11px] text-ink-400">{s.n}</span>
+            {s.nav}
+          </a>
+        ))
+      }
+    </div>
+  </nav>
+
+  <!-- 01 — the breadth -->
+  <section id="breadth" class="max-w-5xl mx-auto px-6 pt-12 scroll-mt-28">
+    <p class="font-mono text-[11px] uppercase tracking-wider text-ink-500">
+      01 — The breadth
+    </p>
+    <h2 class="mt-2 font-display text-3xl font-semibold text-ink-900">
+      Your town has a law about that
+    </h2>
+    <p class="mt-3 max-w-2xl text-[15.5px] leading-relaxed text-ink-600">
+      Across {nCities.toLocaleString()} city codes, the share with a rule on each
+      subject. Tap a row for example towns, then open a town to read its version.
+    </p>
+    <BreadthExplorer client:visible />
+  </section>
+
+  <!-- 02 — patterns of approaches -->
+  <section id="approaches" class="max-w-5xl mx-auto px-6 pt-16 scroll-mt-28">
+    <p class="font-mono text-[11px] uppercase tracking-wider text-ink-500">
+      02 — Patterns of approaches
+    </p>
+    <h2 class="mt-2 font-display text-3xl font-semibold text-ink-900">
+      Same problem, different playbook
+    </h2>
+    <p class="mt-3 max-w-2xl text-[15.5px] leading-relaxed text-ink-600">
+      Towns rarely improvise. They pick from a small menu of approaches. Choose a
+      topic, then an approach, to read the real ordinances.
+    </p>
+    <ApproachExplorer client:load />
+  </section>
+
+  <!-- 03 — regional variation -->
+  <section id="regional" class="max-w-5xl mx-auto px-6 pt-16 scroll-mt-28">
+    <p class="font-mono text-[11px] uppercase tracking-wider text-ink-500">
+      03 — Regional variation
+    </p>
+    <h2 class="mt-2 font-display text-3xl font-semibold text-ink-900">
+      The rules change at the state line
+    </h2>
+    <p class="mt-3 max-w-2xl text-[15.5px] leading-relaxed text-ink-600">
+      Whether a town regulates something often depends on the region, not the
+      town: climate, state preemption, local culture. Pick a subject to see where
+      the rule is common, and why.
+    </p>
+    <RegionalExplorer client:visible />
+  </section>
+
+  <!-- how to read this -->
+  <section class="max-w-5xl mx-auto px-6 pt-14 pb-10">
+    <div
+      class="rounded-lg border border-ink-100 bg-ink-50 px-5 py-4 text-[13px] text-ink-600 max-w-3xl leading-relaxed"
+    >
+      <span class="font-medium text-ink-800">How to read this.</span> “Regulates X”
+      means a town has a law whose title mentions X, which undercounts. Labels and
+      scores are machine estimates, text is OCR'd, and plain-language versions are
+      AI paraphrases. Not legal advice, and not the law. Data:
+      <a
+        href="https://huggingface.co/datasets/LocalLaws/LOCUS-v1"
+        class="underline hover:text-ink-900"
+        rel="noopener">LOCUS-v1</a
+      > (CC BY-NC 4.0).
+    </div>
+  </section>
+</Layout>

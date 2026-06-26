@@ -5,6 +5,20 @@ import PlacePortrait from "./PlacePortrait";
 import CommonQuestions from "./CommonQuestions";
 import LawBrowser from "./LawBrowser";
 
+// The /patterns explorer topics, matched against a town's law titles so we can
+// link out to "how every town handles this" for the rules this town actually has.
+const ZOOM_TOPICS = [
+  { id: "dogs", label: "Dangerous dogs", re: /dangerous dog|vicious dog|pit bull/i },
+  { id: "fireworks", label: "Fireworks", re: /firework/i },
+  { id: "chickens", label: "Backyard chickens", re: /chicken|fowl|poultry/i },
+  { id: "noise", label: "Noise", re: /\bnoise\b/i },
+  {
+    id: "str",
+    label: "Short-term rentals",
+    re: /short.?term rental|vacation rental|transient (lodging|occupanc)|\bairbnb\b/i,
+  },
+];
+
 // One client island for the whole jurisdiction page. It fetches the (potentially
 // multi-MB) per-jurisdiction file ONCE and shares the parsed document across the
 // portrait, questions, and browse modules — avoiding the up-to-3x refetch we'd
@@ -43,6 +57,13 @@ export default function JurisdictionModules({
     };
   }, [jurisId]);
 
+  // Deep-link from the /patterns breadth tiles (e.g. /tn/chattanooga?q=chicken):
+  // seed the browse with the term so it searches and scrolls into view on load.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q) setSeed({ q });
+  }, []);
+
   if (err)
     return (
       <p className="mt-8 text-[14px] text-ink-500">
@@ -51,6 +72,10 @@ export default function JurisdictionModules({
     );
   if (!data)
     return <p className="mt-8 text-[14px] text-ink-400">Loading local laws…</p>;
+
+  const zoomTopics = ZOOM_TOPICS.filter((t) =>
+    data.laws.some((l) => t.re.test(l.title)),
+  );
 
   return (
     <>
@@ -77,6 +102,28 @@ export default function JurisdictionModules({
           <LawBrowser jurisId={jurisId} data={data} seed={seed} />
         </div>
       </section>
+
+      {zoomTopics.length > 0 && (
+        <section className="mt-12 border-t border-[var(--rule)] pt-8">
+          <h2 className="font-display text-[20px] font-semibold text-ink-900">
+            The bigger picture
+          </h2>
+          <p className="mt-1 text-[13.5px] text-ink-500">
+            See how towns across the country handle the same rules.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {zoomTopics.map((t) => (
+              <a
+                key={t.id}
+                href={`/patterns#${t.id}`}
+                className="rounded-lg border border-ink-200 bg-white px-3 py-2 text-[13.5px] text-ink-700 transition hover:border-accent-500 hover:text-ink-900"
+              >
+                {t.label} →
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
     </>
   );
 }

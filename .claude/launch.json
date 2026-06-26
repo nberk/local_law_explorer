@@ -18,6 +18,12 @@
       "runtimeExecutable": "bunx",
       "runtimeArgs": ["astro", "preview", "--host", "0.0.0.0", "--port", "4331"],
       "port": 4331
+    },
+    {
+      "name": "docs-static",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "4350", "--bind", "0.0.0.0", "--directory", "docs"],
+      "port": 4350
     }
   ]
 }

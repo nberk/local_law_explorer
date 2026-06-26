@@ -6,11 +6,30 @@ import { loadIndex } from "../lib/data";
 const { corpus } = loadIndex();
 const coveredCount = corpus.cities + corpus.counties;
 
-const stats = [
-  { label: "Ordinances", value: corpus.total_laws.toLocaleString() },
-  { label: "States", value: corpus.states.toString() },
-  { label: "Cities", value: corpus.cities.toLocaleString() },
-  { label: "Counties", value: corpus.counties.toLocaleString() },
+// Three featured topics for the homepage hook. They link into the /patterns
+// explorer with the topic preselected.
+const featured = [
+  {
+    href: "/patterns#dogs",
+    emoji: "🐕",
+    label: "Dangerous dogs",
+    color: "#b4532a",
+    hook: "95% judge the dog by behavior. 21% name the breed.",
+  },
+  {
+    href: "/patterns#fireworks",
+    emoji: "🎆",
+    label: "Fireworks",
+    color: "#c79434",
+    hook: "A total ban, or just the Fourth of July?",
+  },
+  {
+    href: "/patterns#chickens",
+    emoji: "🐔",
+    label: "Backyard chickens",
+    color: "#7a9e3f",
+    hook: "Allowed with limits, zoned to farms, or banned.",
+  },
 ];
 ---
 
@@ -27,6 +46,42 @@ const stats = [
     <div class="mt-7">
       <FindMyTown client:load />
     </div>
+  </section>
+
+  <!-- featured: how the same rule differs from town to town -->
+  <section class="max-w-7xl mx-auto px-6 pt-12">
+    <p class="font-mono text-[11px] uppercase tracking-wider text-ink-500">
+      Same rule, different town
+    </p>
+    <h2 class="mt-2 font-display text-2xl font-semibold text-ink-900">
+      See how cities handle it differently
+    </h2>
+    <div class="mt-5 grid gap-3 sm:grid-cols-3 max-w-3xl">
+      {
+        featured.map((f) => (
+          <a
+            href={f.href}
+            class="group rounded-xl border border-[var(--rule)] bg-white p-4 transition hover:border-ink-300"
+            style={`border-top: 2px solid ${f.color}`}
+          >
+            <div class="flex items-center gap-2">
+              <span aria-hidden>{f.emoji}</span>
+              <span class="font-medium text-ink-900">{f.label}</span>
+            </div>
+            <p class="mt-2 text-[13.5px] leading-relaxed text-ink-600">{f.hook}</p>
+            <span class="mt-3 inline-block text-[13px] text-accent-600 group-hover:text-accent-700">
+              See how cities differ →
+            </span>
+          </a>
+        ))
+      }
+    </div>
+    <a
+      href="/patterns#breadth"
+      class="mt-4 inline-block text-[13.5px] text-ink-500 hover:text-ink-900"
+    >
+      Or browse all 47 things cities regulate →
+    </a>
   </section>
 
   <!-- what this is: the fuller explanation, moved down for those who want it -->
@@ -68,25 +123,6 @@ const stats = [
           >how this site is built</a
         >.
       </p>
-    </div>
-  </section>
-
-  <!-- the dataset, in numbers -->
-  <section class="max-w-7xl mx-auto px-6 pt-14">
-    <p class="font-mono text-[11px] uppercase tracking-wider text-ink-500">
-      The dataset, in numbers
-    </p>
-    <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4 max-w-2xl">
-      {
-        stats.map((s) => (
-          <div class="rounded-lg border border-[var(--rule)] bg-white px-5 py-4">
-            <div class="font-mono text-2xl text-ink-900">{s.value}</div>
-            <div class="mt-1 text-[11px] uppercase tracking-wider text-ink-500">
-              {s.label}
-            </div>
-          </div>
-        ))
-      }
     </div>
   </section>
 
