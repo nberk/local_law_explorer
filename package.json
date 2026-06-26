@@ -10,6 +10,8 @@
     "data:build": "python3 pipeline/build.py",
     "data:geo": "python3 pipeline/build_geo.py",
     "data:geocode": "python3 pipeline/geocode_jurisdictions.py",
+    "data:patterns": "python3 scripts/build_patterns.py",
+    "data:map": "bun run scripts/build-map-paths.mjs",
     "reel:studio": "remotion studio remotion/index.ts",
     "reel": "remotion render remotion/index.ts SizzleSquare out/sizzle-square.mp4",
     "astro": "astro"
@@ -23,8 +25,11 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "astro": "^6.3.1",
+    "d3-geo": "^3.1.1",
     "tailwindcss": "^4.3.0",
-    "typescript": "^6.0.3"
+    "topojson-client": "^3.1.0",
+    "typescript": "^6.0.3",
+    "us-atlas": "^3.0.1"
   },
   "dependencies": {
     "@remotion/cli": "^4.0.483",
