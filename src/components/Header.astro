@@ -4,7 +4,7 @@ const links = [
   // mobile; keep the rest reachable everywhere (mobile had no nav before).
   { href: "/", label: "Find your town", mobileHidden: true },
   { href: "/map", label: "Explore cities", mobileHidden: false },
-  { href: "/about", label: "About the data", mobileHidden: false },
+  { href: "/about", label: "About", mobileHidden: false },
 ];
 const path = Astro.url.pathname;
 ---
@@ -20,7 +20,7 @@ const path = Astro.url.pathname;
       >
       <span
         class="hidden xs:inline font-display text-[15px] font-semibold text-ink-900"
-        >Local Law Explorer</span
+        >Local Laws</span
       >
     </a>
     <nav
