@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Local Law Explorer — a free, non-commercial static site that turns the open
 **LOCUS-v1** local-ordinance corpus into plain, readable city/county law for
-ordinary people. Live at https://locallaw.pages.dev. The **homepage** leads with
+ordinary people. Live at https://locallaw.nick-berk.com. The **homepage** leads with
 **"find your town"** (`FindMyTown`) as the hero — the core job-to-be-done is
 "what are the local laws where I live?" — the finder sits **at the top**
 (headline "Know your local laws." + `FindMyTown`), so the interactive action is
@@ -335,7 +335,8 @@ The search-first picker no longer buckets on `size`; it orders by law count
 ## Deploy & CI
 
 - Hosting: Cloudflare Pages project **`locallaw`** (account "Berk Labs"),
-  production branch **`main`** → `locallaw.pages.dev`.
+  production branch **`main`** → canonical custom domain `locallaw.nick-berk.com`
+  (served on top of the Pages project URL `locallaw.pages.dev`).
 - **Native Cloudflare Pages Git integration** — every push to `main` triggers a
   build + deploy; PRs get preview URLs. No GitHub Actions, no API token.
 - Build config (set in the CF dashboard, not in-repo): build command

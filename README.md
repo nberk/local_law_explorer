@@ -5,7 +5,7 @@ that shape everyday life (noise, pets, fences, permits, rentals, starting a
 business), in plain, browsable form. Built on the open
 [LOCUS-v1](https://huggingface.co/datasets/LocalLaws/LOCUS-v1) corpus.
 
-**Live:** [locallaw.pages.dev](https://locallaw.pages.dev) — pilot release with
+**Live:** [locallaw.nick-berk.com](https://locallaw.nick-berk.com) — pilot release with
 detailed pages for 19 jurisdictions (major cities and a sample of small towns).
 
 > Not legal advice. Text is OCR'd and labels are machine-generated. See

@@ -1,6 +1,6 @@
 # LOCUS Local-Law Tools: Implementation Plan
 
-Status: **v2 reframe shipped locally** (v1 pilot live at https://locallaw.pages.dev)
+Status: **v2 reframe shipped locally** (v1 pilot live at https://locallaw.nick-berk.com)
 Last updated: 2026-06-23
 
 ## Build status
